@@ -8,8 +8,11 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	http2 "github.com/your-org/go-backend-template/internal/http"
 	"github.com/your-org/go-backend-template/internal/logging"
 	appmiddleware "github.com/your-org/go-backend-template/internal/middleware"
+	"github.com/your-org/go-backend-template/internal/auth"
+	"github.com/your-org/go-backend-template/internal/todo"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
@@ -19,7 +22,7 @@ type RouterConfig struct {
 	Logger      *zap.Logger
 	Tracer      trace.Tracer
 	AuthSvc     appmiddleware.AuthProvider
-	TodoHandler interface{} // TODO: Replace with actual handler type
+	TodoService *todo.Service
 }
 
 // New creates a new Chi router with all middleware and routes configured
@@ -43,8 +46,8 @@ func New(cfg RouterConfig) *chi.Mux {
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public endpoints
-		r.Post("/auth/register", registerHandler(cfg.AuthSvc))
-		r.Post("/auth/login", loginHandler(cfg.AuthSvc))
+		r.Post("/auth/register", auth.RegisterHandler)
+		r.Post("/auth/login", auth.LoginHandler)
 
 		// Optional auth endpoints
 		r.Group(func(r chi.Router) {
@@ -58,11 +61,11 @@ func New(cfg RouterConfig) *chi.Mux {
 
 			// User-scoped todo routes
 			r.Route("/todos", func(r chi.Router) {
-				r.Get("/", listTodosHandler(cfg.TodoHandler))
-				r.Post("/", createTodoHandler(cfg.TodoHandler))
-				r.Get("/{id}", getTodoHandler(cfg.TodoHandler))
-				r.Put("/{id}", updateTodoHandler(cfg.TodoHandler))
-				r.Delete("/{id}", deleteTodoHandler(cfg.TodoHandler))
+				r.Get("/", todo.ListHandler)
+				r.Post("/", todo.CreateHandler)
+				r.Get("/{id}", todo.GetHandler)
+				r.Put("/{id}", todo.UpdateHandler)
+				r.Delete("/{id}", todo.DeleteHandler)
 			})
 
 			// User profile routes
@@ -199,75 +202,33 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// Stub handlers - to be replaced with actual implementations
-func registerHandler(authSvc appmiddleware.AuthProvider) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	}
-}
-
-func loginHandler(authSvc appmiddleware.AuthProvider) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	}
-}
-
-func listTodosHandler(handler interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	}
-}
-
-func createTodoHandler(handler interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	}
-}
-
-func getTodoHandler(handler interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	}
-}
-
-func updateTodoHandler(handler interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	}
-}
-
-func deleteTodoHandler(handler interface{}) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
-	}
-}
-
+// Stub handlers for admin/approved-users - to be implemented
 func meHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
 	}
 }
 
 func listApprovedUsersHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
 	}
 }
 
 func createApprovedUserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
 	}
 }
 
 func bulkCreateApprovedUsersHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
 	}
 }
 
 func deleteApprovedUserHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNotImplemented)
+		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
 	}
 }

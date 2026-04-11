@@ -48,3 +48,15 @@ type Role struct {
 	Description *string
 	CreatedAt   time.Time
 }
+
+// Todo represents a todo item
+type Todo struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Title       string
+	Description *string
+	IsCompleted bool
+	DueDate     *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
