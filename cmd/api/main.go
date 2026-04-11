@@ -8,10 +8,17 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
+	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/db"
+	dbSQLC "github.com/your-org/go-backend-template/internal/db/sqlc"
 	"github.com/your-org/go-backend-template/internal/logging"
+	"github.com/your-org/go-backend-template/internal/observability"
+	"github.com/your-org/go-backend-template/internal/router"
+	"github.com/your-org/go-backend-template/internal/todo"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
@@ -40,6 +47,25 @@ func run() error {
 
 	logger.Info("starting go-backend-template API")
 
+	// Initialize OpenTelemetry tracing
+	tracerProvider, err := observability.Setup(
+		context.Background(),
+		cfg.Observability.ServiceName,
+		logger,
+	)
+	if err != nil {
+		logger.Warn("failed to initialize tracing", zap.Error(err))
+	} else {
+		defer func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := tracerProvider.Shutdown(ctx); err != nil {
+				logger.Warn("tracer provider shutdown failed", zap.Error(err))
+			}
+		}()
+		logger.Info("OpenTelemetry tracing initialized")
+	}
+
 	// Connect to database
 	ctx := context.Background()
 	pool, err := db.New(ctx, cfg.Database)
@@ -50,14 +76,34 @@ func run() error {
 
 	logger.Info("database connection established")
 
-	// TODO: Wire dependencies and build router
-	_ = pool
-	_ = logger
+	// Initialize SQLC queries
+	queries := dbSQLC.New(pool.Pool)
 
-	// Start HTTP server with stub handler
-	return startHTTPServer(cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Hello, World"))
-	}), logger)
+	// Initialize auth repository and service
+	authRepo := auth.NewRepository(queries)
+	authService := auth.NewService(authRepo, cfg.Auth.JWTSecretKey, time.Duration(cfg.Auth.JWTExpireMinutes)*time.Minute)
+
+	// Initialize todo repository and service
+	todoRepo := todo.NewRepository(queries)
+	todoService := todo.NewService(todoRepo)
+
+	// Get tracer
+	tracer := trace.NewNoopTracerProvider().Tracer(cfg.Observability.ServiceName)
+	if tracerProvider != nil {
+		tracer = tracerProvider.Tracer(cfg.Observability.ServiceName)
+	}
+
+	// Build router with all dependencies
+	routerConfig := router.RouterConfig{
+		Logger:      logger,
+		Tracer:      tracer,
+		AuthSvc:     authService,
+		TodoService: todoService,
+	}
+	mux := router.New(routerConfig)
+
+	// Start HTTP server
+	return startHTTPServer(cfg, mux, logger)
 }
 
 func startHTTPServer(cfg *config.Config, handler http.Handler, logger *zap.Logger) error {
