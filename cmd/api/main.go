@@ -82,10 +82,12 @@ func run() error {
 	// Initialize auth repository and service
 	authRepo := auth.NewRepository(queries)
 	authService := auth.NewService(authRepo, cfg.Auth.JWTSecretKey, time.Duration(cfg.Auth.JWTExpireMinutes)*time.Minute)
+	authHandler := auth.NewHandler(authService, logger)
 
 	// Initialize todo repository and service
 	todoRepo := todo.NewRepository(queries)
 	todoService := todo.NewService(todoRepo)
+	todoHandler := todo.NewHandler(todoService)
 
 	// Get tracer
 	tracer := trace.NewNoopTracerProvider().Tracer(cfg.Observability.ServiceName)
@@ -99,6 +101,8 @@ func run() error {
 		Tracer:      tracer,
 		AuthSvc:     authService,
 		TodoService: todoService,
+		AuthHandler: authHandler,
+		TodoHandler: todoHandler,
 	}
 	mux := router.New(routerConfig)
 

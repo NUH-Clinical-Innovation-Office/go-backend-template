@@ -184,3 +184,32 @@ func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*do
 
 	return s.repo.ToDomainUser(*user, approvedUser, roles), nil
 }
+
+// ListApprovedUsers lists all approved users (admin only)
+func (s *Service) ListApprovedUsers(ctx context.Context) ([]*domain.ApprovedUser, error) {
+	return s.repo.ListApprovedUsers(ctx)
+}
+
+// CreateApprovedUser creates a new approved user (admin only)
+func (s *Service) CreateApprovedUser(ctx context.Context, email, firstName string, createdBy uuid.UUID) (*domain.ApprovedUser, error) {
+	// Check if email already exists
+	existing, err := s.repo.GetApprovedUserByEmail(ctx, email)
+	if err == nil && existing != nil {
+		return nil, errors.New("email already in approved list")
+	}
+
+	return s.repo.CreateApprovedUser(ctx, email, firstName, createdBy)
+}
+
+// BulkCreateApprovedUsers creates multiple approved users (admin only)
+func (s *Service) BulkCreateApprovedUsers(ctx context.Context, emails, firstNames []string, createdBy uuid.UUID) ([]*domain.ApprovedUser, error) {
+	if len(emails) != len(firstNames) {
+		return nil, errors.New("emails and firstNames must have same length")
+	}
+	return s.repo.BulkCreateApprovedUsers(ctx, emails, firstNames, createdBy)
+}
+
+// DeleteApprovedUser deletes an approved user (admin only)
+func (s *Service) DeleteApprovedUser(ctx context.Context, id uuid.UUID) error {
+	return s.repo.DeleteApprovedUser(ctx, id)
+}

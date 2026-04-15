@@ -143,3 +143,101 @@ func (r *Repository) ToDomainUser(user db.User, approvedUser *db.ApprovedUser, r
 		ApprovedUser:   approvedUserDomain,
 	}
 }
+
+// ListApprovedUsers lists all approved users
+func (r *Repository) ListApprovedUsers(ctx context.Context) ([]*domain.ApprovedUser, error) {
+	rows, err := r.db.ListApprovedUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*domain.ApprovedUser, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, &domain.ApprovedUser{
+			ID:        pgtypeToUuid(row.ID),
+			Email:     row.Email,
+			FirstName: row.FirstName,
+			CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
+			CreatedAt: row.CreatedAt.Time,
+			UpdatedAt: row.UpdatedAt.Time,
+		})
+	}
+	return result, nil
+}
+
+// CreateApprovedUser creates a new approved user
+func (r *Repository) CreateApprovedUser(ctx context.Context, email, firstName string, createdBy uuid.UUID) (*domain.ApprovedUser, error) {
+	row, err := r.db.CreateApprovedUser(ctx, db.CreateApprovedUserParams{
+		Email:     email,
+		FirstName: firstName,
+		CreatedBy: uuidToPgtype(createdBy),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &domain.ApprovedUser{
+		ID:        pgtypeToUuid(row.ID),
+		Email:     row.Email,
+		FirstName: row.FirstName,
+		CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}, nil
+}
+
+// BulkCreateApprovedUsers creates multiple approved users
+func (r *Repository) BulkCreateApprovedUsers(ctx context.Context, emails, firstNames []string, createdBy uuid.UUID) ([]*domain.ApprovedUser, error) {
+	pgCreatedBy := uuidToPgtype(createdBy)
+	emailsPg := make([]string, len(emails))
+	firstNamesPg := make([]string, len(firstNames))
+	createdByPg := make([]pgtype.UUID, len(emails))
+	copy(emailsPg, emails)
+	copy(firstNamesPg, firstNames)
+	for i := range createdByPg {
+		createdByPg[i] = pgCreatedBy
+	}
+
+	rows, err := r.db.CreateApprovedUsersBulk(ctx, db.CreateApprovedUsersBulkParams{
+		Column1: emailsPg,
+		Column2: firstNamesPg,
+		Column3: createdByPg,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*domain.ApprovedUser, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, &domain.ApprovedUser{
+			ID:        pgtypeToUuid(row.ID),
+			Email:     row.Email,
+			FirstName: row.FirstName,
+			CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
+			CreatedAt: row.CreatedAt.Time,
+			UpdatedAt: row.UpdatedAt.Time,
+		})
+	}
+	return result, nil
+}
+
+// DeleteApprovedUser deletes an approved user
+func (r *Repository) DeleteApprovedUser(ctx context.Context, id uuid.UUID) error {
+	return r.db.DeleteApprovedUser(ctx, uuidToPgtype(id))
+}
+
+// GetApprovedUserByEmail gets an approved user by email
+func (r *Repository) GetApprovedUserByEmail(ctx context.Context, email string) (*domain.ApprovedUser, error) {
+	row, err := r.db.GetApprovedUserByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.ApprovedUser{
+		ID:        pgtypeToUuid(row.ID),
+		Email:     row.Email,
+		FirstName: row.FirstName,
+		CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
+		CreatedAt: row.CreatedAt.Time,
+		UpdatedAt: row.UpdatedAt.Time,
+	}, nil
+}

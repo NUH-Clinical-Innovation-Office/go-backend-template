@@ -8,10 +8,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	http2 "github.com/your-org/go-backend-template/internal/http"
+	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/logging"
 	appmiddleware "github.com/your-org/go-backend-template/internal/middleware"
-	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/todo"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -23,6 +22,8 @@ type RouterConfig struct {
 	Tracer      trace.Tracer
 	AuthSvc     appmiddleware.AuthProvider
 	TodoService *todo.Service
+	AuthHandler *auth.Handler
+	TodoHandler *todo.Handler
 }
 
 // New creates a new Chi router with all middleware and routes configured
@@ -46,8 +47,8 @@ func New(cfg RouterConfig) *chi.Mux {
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
 		// Public endpoints
-		r.Post("/auth/register", auth.RegisterHandler)
-		r.Post("/auth/login", auth.LoginHandler)
+		r.Post("/auth/register", cfg.AuthHandler.RegisterHandler)
+		r.Post("/auth/login", cfg.AuthHandler.LoginHandler)
 
 		// Optional auth endpoints
 		r.Group(func(r chi.Router) {
@@ -61,15 +62,15 @@ func New(cfg RouterConfig) *chi.Mux {
 
 			// User-scoped todo routes
 			r.Route("/todos", func(r chi.Router) {
-				r.Get("/", todo.ListHandler)
-				r.Post("/", todo.CreateHandler)
-				r.Get("/{id}", todo.GetHandler)
-				r.Put("/{id}", todo.UpdateHandler)
-				r.Delete("/{id}", todo.DeleteHandler)
+				r.Get("/", cfg.TodoHandler.ListHandler)
+				r.Post("/", cfg.TodoHandler.CreateHandler)
+				r.Get("/{id}", cfg.TodoHandler.GetHandler)
+				r.Put("/{id}", cfg.TodoHandler.UpdateHandler)
+				r.Delete("/{id}", cfg.TodoHandler.DeleteHandler)
 			})
 
 			// User profile routes
-			r.Get("/me", meHandler())
+			r.Get("/me", cfg.AuthHandler.GetMeHandler)
 		})
 
 		// Admin-only endpoints
@@ -78,10 +79,10 @@ func New(cfg RouterConfig) *chi.Mux {
 
 			// Approved users management
 			r.Route("/admin/approved-users", func(r chi.Router) {
-				r.Get("/", listApprovedUsersHandler())
-				r.Post("/", createApprovedUserHandler())
-				r.Post("/bulk", bulkCreateApprovedUsersHandler())
-				r.Delete("/{id}", deleteApprovedUserHandler())
+				r.Get("/", listApprovedUsersHandler(cfg.AuthHandler))
+				r.Post("/", createApprovedUserHandler(cfg.AuthHandler))
+				r.Post("/bulk", bulkCreateApprovedUsersHandler(cfg.AuthHandler))
+				r.Delete("/{id}", deleteApprovedUserHandler(cfg.AuthHandler))
 			})
 		})
 	})
@@ -202,33 +203,19 @@ func (rw *responseWriter) WriteHeader(code int) {
 	rw.ResponseWriter.WriteHeader(code)
 }
 
-// Stub handlers for admin/approved-users - to be implemented
-func meHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
-	}
+// Admin handlers - delegate to auth.Handler
+func listApprovedUsersHandler(authHandler *auth.Handler) http.HandlerFunc {
+	return authHandler.ListApprovedUsersHandler
 }
 
-func listApprovedUsersHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
-	}
+func createApprovedUserHandler(authHandler *auth.Handler) http.HandlerFunc {
+	return authHandler.CreateApprovedUserHandler
 }
 
-func createApprovedUserHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
-	}
+func bulkCreateApprovedUsersHandler(authHandler *auth.Handler) http.HandlerFunc {
+	return authHandler.BulkCreateApprovedUsersHandler
 }
 
-func bulkCreateApprovedUsersHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
-	}
-}
-
-func deleteApprovedUserHandler() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		http2.RespondError(w, http.StatusNotImplemented, "not implemented")
-	}
+func deleteApprovedUserHandler(authHandler *auth.Handler) http.HandlerFunc {
+	return authHandler.DeleteApprovedUserHandler
 }

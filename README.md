@@ -114,36 +114,36 @@ OTEL_SERVICE_NAME=go-backend-template
 
 ### Authentication
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| POST | `/api/v1/auth/register` | Register new user | No |
-| POST | `/api/v1/auth/login` | Login | No |
+| Method | Endpoint                | Description       | Auth |
+| ------ | ----------------------- | ----------------- | ---- |
+| POST   | `/api/v1/auth/register` | Register new user | No   |
+| POST   | `/api/v1/auth/login`    | Login             | No   |
 
 ### Todos (User-Scoped)
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/v1/todos` | List all todos | Required |
-| POST | `/api/v1/todos` | Create todo | Required |
-| GET | `/api/v1/todos/{id}` | Get todo by ID | Required |
-| PUT | `/api/v1/todos/{id}` | Update todo | Required |
-| DELETE | `/api/v1/todos/{id}` | Delete todo | Required |
+| Method | Endpoint             | Description    | Auth     |
+| ------ | -------------------- | -------------- | -------- |
+| GET    | `/api/v1/todos`      | List all todos | Required |
+| POST   | `/api/v1/todos`      | Create todo    | Required |
+| GET    | `/api/v1/todos/{id}` | Get todo by ID | Required |
+| PUT    | `/api/v1/todos/{id}` | Update todo    | Required |
+| DELETE | `/api/v1/todos/{id}` | Delete todo    | Required |
 
 ### Admin (Approved Users Management)
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/v1/admin/approved-users` | List approved users | Admin |
-| POST | `/api/v1/admin/approved-users` | Create approved user | Admin |
-| POST | `/api/v1/admin/approved-users/bulk` | Bulk create | Admin |
+| Method | Endpoint                            | Description          | Auth  |
+| ------ | ----------------------------------- | -------------------- | ----- |
+| GET    | `/api/v1/admin/approved-users`      | List approved users  | Admin |
+| POST   | `/api/v1/admin/approved-users`      | Create approved user | Admin |
+| POST   | `/api/v1/admin/approved-users/bulk` | Bulk create          | Admin |
 | DELETE | `/api/v1/admin/approved-users/{id}` | Delete approved user | Admin |
 
 ### Health
 
-| Method | Endpoint | Description | Auth |
-|--------|----------|-------------|------|
-| GET | `/health` | Health check | No |
-| GET | `/` | API info | No |
+| Method | Endpoint  | Description  | Auth |
+| ------ | --------- | ------------ | ---- |
+| GET    | `/health` | Health check | No   |
+| GET    | `/`       | API info     | No   |
 
 ## Development
 
