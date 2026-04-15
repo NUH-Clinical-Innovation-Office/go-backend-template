@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/your-org/go-backend-template/internal/router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/your-org/go-backend-template/internal/router"
 )
 
 func TestTodoCRUD(t *testing.T) {
@@ -19,7 +19,7 @@ func TestTodoCRUD(t *testing.T) {
 
 	// Setup: create approved user and registered user
 	ctx := context.Background()
-	_, err := pool.Pool.Exec(ctx,
+	_, err := pool.Exec(ctx,
 		"INSERT INTO approved_users (id, email, first_name) VALUES ('00000000-0000-0000-0000-000000000010'::uuid, 'todo@example.com', 'Todo')")
 	require.NoError(t, err)
 
@@ -155,7 +155,7 @@ func TestAuthGetMe(t *testing.T) {
 
 	// Setup user
 	ctx := context.Background()
-	_, err := pool.Pool.Exec(ctx,
+	_, err := pool.Exec(ctx,
 		"INSERT INTO approved_users (id, email, first_name) VALUES ('00000000-0000-0000-0000-000000000011'::uuid, 'me@example.com', 'Me')")
 	require.NoError(t, err)
 

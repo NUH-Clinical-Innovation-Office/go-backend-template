@@ -1,94 +1,120 @@
+version: "2"
+
 run:
   timeout: 5m
   modules-download-mode: readonly
 
 linters:
+  disable:
+    - dupl
+    - gosec
+    - revive
   enable:
     - errcheck
-    - goconst
-    - gocritic
-    - godot
-    - gofmt
-    - goimports
-    - gosimple
     - govet
-    - ineffassign
-    - misspell
-    - nakedret
-    - prealloc
     - staticcheck
-    - typecheck
-    - unconvert
-    - unparam
+    - ineffassign
     - unused
-
-linters-settings:
-  gofmt:
-    simplify: true
-  goconst:
-    min-len: 2
-    min-occurrences: 3
-  gocritic:
-    enabled-checks:
-      - appendCombine
-      - argOrder
-      - assignOp
-      - badCond
-      - boolExprSimplify
-      - builtinShadow
-      - captLocal
-      - caseOrder
-      - codegenComment
-      - commentFormatting
-      - commentedOutCode
-      - commentedOutImport
-      - defaultCaseOrder
-      - deprecatedComment
-      - docStub
-      - dupBranchBody
-      - dupCase
-      - dupImport
-      - emptyFallthrough
-      - equalFold
-      - elseif
-      - emptyStringTest
-      - hexLiteral
-      - ifElseChain
-      - importShadow
-      - initClause
-      - methodExprCall
-      - nestingReduce
-      - newDeref
-      - nilValReturn
-      - octalLiteral
-      - paramTypeCombine
-      - rangeExprCopy
-      - rangeValCopy
-      - regexpMust
-      - returnAfterHttpError
-      - sloppyLen
-      - stringXbytes
-      - switchTrue
-      - typeAssertChain
-      - typeSwitchVar
-      - typeUnparen
-      - underef
-      - unlabelStmt
-      - unlambda
-      - unslice
-      - unusedParam
-      - uselessString
-      - weakCond
-      - yodaStyleExpr
-  misspell:
-    locale: US
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - gosec
-        - unused
-  exclude:
-    - "Error return value of .+ is not checked"
+    - misspell
+    - goconst
+    - gocyclo
+    - unconvert
+    - gocritic
+    - exhaustive
+    - nolintlint
+    - whitespace
+    - bodyclose
+    - copyloopvar
+    - goprintffuncname
+    - nilerr
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    govet:
+      enable-all: true
+    revive:
+      rules:
+        - name: exported
+        - name: error-return
+        - name: error-naming
+        - name: if-return
+        - name: var-naming
+          disabled: true
+        - name: package-comments
+          disabled: true
+        - name: blank-imports
+        - name: context-as-argument
+        - name: dot-imports
+        - name: error-strings
+        - name: increment-decrement
+        - name: var-declaration
+        - name: range-val-in-closure
+        - name: range-val-address
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: indent-error-flow
+    gocyclo:
+      min-complexity: 15
+    goconst:
+      min-len: 3
+      min-occurrences: 3
+    gosec:
+      excludes:
+        - G404
+        - G301
+        - G104
+        - G115
+    dupl:
+      threshold: 150
+    misspell:
+      locale: US
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - style
+        - performance
+        - experimental
+        - opinionated
+      disabled-checks:
+        - whyNoLint
+  exclusions:
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - gocyclo
+          - errcheck
+          - dupl
+          - gosec
+          - goconst
+          - gocritic
+          - govet
+      - path: "internal/db/migrations"
+        linters:
+          - errcheck
+          - goconst
+      - path: "internal/db/sqlc/"
+        linters:
+          - errcheck
+          - gocritic
+          - goconst
+          - gocyclo
+          - unused
+          - exhaustive
+      - path: "cmd/migrate/main.go"
+        linters:
+          - staticcheck
+          - gocritic
+      - source: "^package (http|interfaces|types|main|db|middleware)$"
+        linters:
+          - revive
+      - linters:
+          - errcheck
+        text: "Error return value of .*.Close.*is not checked"
+      - linters:
+          - govet
+        text: "fieldalignment"

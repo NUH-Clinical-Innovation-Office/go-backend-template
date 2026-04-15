@@ -115,19 +115,28 @@ func OptionalAuth(authSvc AuthProvider) func(http.Handler) http.Handler {
 
 // UserFromContext retrieves the current user from context
 func UserFromContext(ctx context.Context) *domain.User {
-	u, _ := ctx.Value(CurrentUserKey).(*domain.User)
+	u, ok := ctx.Value(CurrentUserKey).(*domain.User)
+	if !ok {
+		return nil
+	}
 	return u
 }
 
 // RequestIDFromContext retrieves the request ID from context
 func RequestIDFromContext(ctx context.Context) string {
-	id, _ := ctx.Value(RequestIDKey).(string)
+	id, ok := ctx.Value(RequestIDKey).(string)
+	if !ok {
+		return ""
+	}
 	return id
 }
 
 // ClientIPFromContext retrieves the client IP from context
 func ClientIPFromContext(ctx context.Context) string {
-	ip, _ := ctx.Value(ClientIPKey).(string)
+	ip, ok := ctx.Value(ClientIPKey).(string)
+	if !ok {
+		return ""
+	}
 	return ip
 }
 

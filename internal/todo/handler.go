@@ -163,7 +163,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req UpdateTodoRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if decodeErr := json.NewDecoder(r.Body).Decode(&req); decodeErr != nil {
 		http2.RespondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
@@ -175,8 +175,8 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var dueDate *time.Time
 	if req.DueDate != nil && *req.DueDate != "" {
-		t, err := time.Parse(time.RFC3339, *req.DueDate)
-		if err == nil {
+		t, parseErr := time.Parse(time.RFC3339, *req.DueDate)
+		if parseErr == nil {
 			dueDate = &t
 		}
 	}

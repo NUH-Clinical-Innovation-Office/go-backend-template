@@ -37,8 +37,8 @@ func (r *Repository) ListTodosByUserID(ctx context.Context, userID uuid.UUID) ([
 }
 
 // CreateTodo creates a new todo
-func (r *Repository) CreateTodo(ctx context.Context, params db.CreateTodoParams) (*db.Todo, error) {
-	todo, err := r.db.CreateTodo(ctx, params)
+func (r *Repository) CreateTodo(ctx context.Context, params *db.CreateTodoParams) (*db.Todo, error) {
+	todo, err := r.db.CreateTodo(ctx, *params)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +46,8 @@ func (r *Repository) CreateTodo(ctx context.Context, params db.CreateTodoParams)
 }
 
 // UpdateTodo updates a todo
-func (r *Repository) UpdateTodo(ctx context.Context, params db.UpdateTodoParams) (db.Todo, error) {
-	return r.db.UpdateTodo(ctx, params)
+func (r *Repository) UpdateTodo(ctx context.Context, params *db.UpdateTodoParams) (db.Todo, error) {
+	return r.db.UpdateTodo(ctx, *params)
 }
 
 // DeleteTodo deletes a todo

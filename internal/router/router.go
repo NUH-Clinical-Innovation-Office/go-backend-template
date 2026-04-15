@@ -95,7 +95,9 @@ func rootHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"version":"1.0.0","status":"running"}`))
+		if _, err := w.Write([]byte(`{"version":"1.0.0","status":"running"}`)); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -104,7 +106,9 @@ func healthHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"healthy"}`))
+		if _, err := w.Write([]byte(`{"status":"healthy"}`)); err != nil {
+			http.Error(w, "failed to write response", http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -138,10 +142,10 @@ func loggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 			ctx := r.Context()
 
 			// Add trace context to logger
-			logger := logging.WithTraceContext(ctx, logger)
+			log := logging.WithTraceContext(ctx, logger)
 
 			// Log request start
-			logger.Debug("request started",
+			log.Debug("request started",
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
 			)

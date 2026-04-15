@@ -18,7 +18,7 @@ import (
 	"github.com/your-org/go-backend-template/internal/observability"
 	"github.com/your-org/go-backend-template/internal/router"
 	"github.com/your-org/go-backend-template/internal/todo"
-	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
 
@@ -42,7 +42,9 @@ func run() error {
 		return fmt.Errorf("create logger: %w", err)
 	}
 	defer func() {
-		_ = logger.Sync()
+		if syncErr := logger.Sync(); syncErr != nil {
+			fmt.Fprintf(os.Stderr, "failed to sync logger: %v\n", syncErr)
+		}
 	}()
 
 	logger.Info("starting go-backend-template API")
@@ -59,8 +61,9 @@ func run() error {
 		defer func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			if err := tracerProvider.Shutdown(ctx); err != nil {
-				logger.Warn("tracer provider shutdown failed", zap.Error(err))
+			shutdownErr := tracerProvider.Shutdown(ctx)
+			if shutdownErr != nil {
+				logger.Warn("tracer provider shutdown failed", zap.Error(shutdownErr))
 			}
 		}()
 		logger.Info("OpenTelemetry tracing initialized")
@@ -90,7 +93,7 @@ func run() error {
 	todoHandler := todo.NewHandler(todoService)
 
 	// Get tracer
-	tracer := trace.NewNoopTracerProvider().Tracer(cfg.Observability.ServiceName)
+	tracer := noop.NewTracerProvider().Tracer(cfg.Observability.ServiceName)
 	if tracerProvider != nil {
 		tracer = tracerProvider.Tracer(cfg.Observability.ServiceName)
 	}

@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/your-org/go-backend-template/internal/config"
 )
 
 // Pool wraps pgxpool.Pool

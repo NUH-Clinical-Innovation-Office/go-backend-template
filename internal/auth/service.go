@@ -74,7 +74,9 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 	// Assign default user role
 	userRole, err := s.repo.GetRoleByName(ctx, "user")
 	if err == nil && userRole != nil {
-		_ = s.repo.AssignRoleToUser(ctx, pgtypeToUuid(user.ID), pgtypeToUuid(userRole.ID))
+		if assignErr := s.repo.AssignRoleToUser(ctx, pgtypeToUuid(user.ID), pgtypeToUuid(userRole.ID)); assignErr != nil {
+			return "", assignErr
+		}
 	}
 
 	// Generate JWT token
@@ -101,7 +103,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	}
 
 	// Check password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+	if cmpErr := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); cmpErr != nil {
 		return "", ErrInvalidCredentials
 	}
 
@@ -130,7 +132,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	}
 
 	_ = approvedUser
-	_ = s.repo.ToDomainUser(*user, approvedUser, roles)
+	_ = s.repo.ToDomainUser(user, approvedUser, roles)
 
 	return tokenString, nil
 }
@@ -182,7 +184,7 @@ func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*do
 		approvedUser = nil
 	}
 
-	return s.repo.ToDomainUser(*user, approvedUser, roles), nil
+	return s.repo.ToDomainUser(user, approvedUser, roles), nil
 }
 
 // ListApprovedUsers lists all approved users (admin only)

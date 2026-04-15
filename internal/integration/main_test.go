@@ -8,15 +8,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/db"
 	dbSQLC "github.com/your-org/go-backend-template/internal/db/sqlc"
 	"github.com/your-org/go-backend-template/internal/logging"
 	"github.com/your-org/go-backend-template/internal/todo"
-	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/modules/postgres"
-	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 var (
@@ -107,7 +107,7 @@ func runMigrations(connStr string) error {
 			return fmt.Errorf("read migration %s: %w", migration, err)
 		}
 
-		_, err = pool.Pool.Exec(ctx, string(sql))
+		_, err = pool.Exec(ctx, string(sql))
 		if err != nil {
 			return fmt.Errorf("execute migration %s: %w", migration, err)
 		}

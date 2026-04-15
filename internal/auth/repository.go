@@ -109,7 +109,7 @@ func pgApprovedUserToUuid(p pgtype.UUID) *uuid.UUID {
 }
 
 // ToDomainUser converts db.User to domain.User
-func (r *Repository) ToDomainUser(user db.User, approvedUser *db.ApprovedUser, roles []db.Role) *domain.User {
+func (r *Repository) ToDomainUser(user *db.User, approvedUser *db.ApprovedUser, roles []db.Role) *domain.User {
 	domainRoles := make([]domain.Role, len(roles))
 	for i, role := range roles {
 		domainRoles[i] = domain.Role{
@@ -152,7 +152,8 @@ func (r *Repository) ListApprovedUsers(ctx context.Context) ([]*domain.ApprovedU
 	}
 
 	result := make([]*domain.ApprovedUser, 0, len(rows))
-	for _, row := range rows {
+	for i := range rows {
+		row := &rows[i]
 		result = append(result, &domain.ApprovedUser{
 			ID:        pgtypeToUuid(row.ID),
 			Email:     row.Email,
@@ -208,7 +209,8 @@ func (r *Repository) BulkCreateApprovedUsers(ctx context.Context, emails, firstN
 	}
 
 	result := make([]*domain.ApprovedUser, 0, len(rows))
-	for _, row := range rows {
+	for i := range rows {
+		row := &rows[i]
 		result = append(result, &domain.ApprovedUser{
 			ID:        pgtypeToUuid(row.ID),
 			Email:     row.Email,

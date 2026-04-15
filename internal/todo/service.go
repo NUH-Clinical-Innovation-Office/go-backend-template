@@ -39,8 +39,8 @@ func (s *Service) ListByUserID(ctx context.Context, userID uuid.UUID) ([]domain.
 	}
 
 	result := make([]domain.Todo, len(todos))
-	for i, todo := range todos {
-		result[i] = s.toDomainTodo(todo)
+	for i := range todos {
+		result[i] = s.toDomainTodo(&todos[i])
 	}
 	return result, nil
 }
@@ -57,7 +57,7 @@ func (s *Service) GetByID(ctx context.Context, todoID, userID uuid.UUID) (*domai
 		return nil, ErrTodoNotOwned
 	}
 
-	result := s.toDomainTodo(todo)
+	result := s.toDomainTodo(&todo)
 	return &result, nil
 }
 
@@ -90,7 +90,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title string, de
 		return nil, err
 	}
 
-	result := s.toDomainTodo(todo)
+	result := s.toDomainTodo(&todo)
 	return &result, nil
 }
 
@@ -134,7 +134,7 @@ func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title st
 		return nil, err
 	}
 
-	result := s.toDomainTodo(updated)
+	result := s.toDomainTodo(&updated)
 	return &result, nil
 }
 
@@ -155,7 +155,7 @@ func (s *Service) Delete(ctx context.Context, todoID, userID uuid.UUID) error {
 	return s.repo.db.DeleteTodo(ctx, pgTodoID)
 }
 
-func (s *Service) toDomainTodo(todo db.Todo) domain.Todo {
+func (s *Service) toDomainTodo(todo *db.Todo) domain.Todo {
 	var dueDate *time.Time
 	if todo.DueDate.Valid {
 		t := todo.DueDate.Time

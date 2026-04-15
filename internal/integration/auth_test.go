@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/your-org/go-backend-template/internal/router"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/your-org/go-backend-template/internal/router"
 )
 
 func TestAuthRegister(t *testing.T) {
@@ -19,7 +19,7 @@ func TestAuthRegister(t *testing.T) {
 
 	// First create an approved user
 	ctx := context.Background()
-	_, err := pool.Pool.Exec(ctx,
+	_, err := pool.Exec(ctx,
 		"INSERT INTO approved_users (id, email, first_name) VALUES ('00000000-0000-0000-0000-000000000001'::uuid, 'test@example.com', 'Test')")
 	require.NoError(t, err)
 
@@ -76,7 +76,7 @@ func TestAuthLogin(t *testing.T) {
 
 	// Create approved user and registered user
 	ctx := context.Background()
-	_, err := pool.Pool.Exec(ctx,
+	_, err := pool.Exec(ctx,
 		"INSERT INTO approved_users (id, email, first_name) VALUES ('00000000-0000-0000-0000-000000000002'::uuid, 'login@example.com', 'Login')")
 	require.NoError(t, err)
 
@@ -144,7 +144,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 	ctx := context.Background()
 
 	// Create admin user
-	_, err := pool.Pool.Exec(ctx,
+	_, err := pool.Exec(ctx,
 		"INSERT INTO approved_users (id, email, first_name) VALUES ('00000000-0000-0000-0000-000000000020'::uuid, 'admin@example.com', 'Admin')")
 	require.NoError(t, err)
 
@@ -152,10 +152,10 @@ func TestAdminApprovedUsers(t *testing.T) {
 	require.NoError(t, err)
 
 	// Assign admin role
-	_, err = pool.Pool.Exec(ctx,
+	_, err = pool.Exec(ctx,
 		"INSERT INTO roles (id, name) VALUES ('00000000-0000-0000-0000-000000000001'::uuid, 'admin') ON CONFLICT (name) DO NOTHING")
 	require.NoError(t, err)
-	_, err = pool.Pool.Exec(ctx,
+	_, err = pool.Exec(ctx,
 		"INSERT INTO user_roles (user_id, role_id) VALUES ((SELECT id FROM users WHERE email = 'admin@example.com'), '00000000-0000-0000-0000-000000000001'::uuid)")
 	require.NoError(t, err)
 

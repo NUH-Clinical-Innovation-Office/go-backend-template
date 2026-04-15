@@ -44,3 +44,7 @@ Thumbs.db
 # Temp files
 /tmp/
 .tmp/
+
+# Lefthook
+.lefthook/
+.lefthook-local/

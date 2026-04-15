@@ -1,0 +1,72 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build:
+    name: Build & Test
+    permissions:
+      contents: read
+      security-events: write
+    uses: ./.github/workflows/reusable-build.yml
+
+  integration-test:
+    name: Integration Tests
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:dind
+        options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run integration tests
+        run: make test-integration
+        env:
+          TESTCONTAINERS_RYUK_DISABLED: "false"
+
+  docker:
+    name: Build & Push Docker Image
+    needs: build
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/reusable-docker.yml
+    with:
+      platforms: linux/amd64,linux/arm64
+    secrets: inherit
+
+  security-scan:
+    name: Security Scan
+    needs: docker
+    permissions:
+      contents: read
+      packages: read
+      security-events: write
+    uses: ./.github/workflows/reusable-security-scan.yml
+    with:
+      image_tag: ${{ needs.docker.outputs.image_tag }}
+    secrets: inherit
+
+  # deploy-production:
+  #   name: Deploy to Production
+  #   needs: [docker, security-scan]
+  #   permissions:
+  #     contents: read
+  #     packages: read
+  #     deployments: write
+  #     id-token: write
+  #   uses: ./.github/workflows/production-deploy.yml
+  #   with:
+  #     image_tag: ${{ needs.docker.outputs.versioned_tag }}
+  #   secrets: inherit

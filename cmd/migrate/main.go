@@ -40,44 +40,67 @@ func run() error {
 
 	switch *command {
 	case "up":
-		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-			return fmt.Errorf("migration up failed: %w", err)
-		}
-		fmt.Println("migrations applied successfully")
+		return runUp(m)
 	case "down":
-		if err := m.Down(); err != nil && err != migrate.ErrNoChange {
-			return fmt.Errorf("migration down failed: %w", err)
-		}
-		fmt.Println("migration down completed")
+		return runDown(m)
 	case "reset":
-		if err := m.Down(); err != nil && err != migrate.ErrNoChange {
-			return fmt.Errorf("migration down failed: %w", err)
-		}
-		if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-			return fmt.Errorf("migration up failed: %w", err)
-		}
-		fmt.Println("migration reset completed")
+		return runReset(m)
 	case "force":
-		if *version == 0 {
-			return fmt.Errorf("-version flag is required for force command")
-		}
-		if err := m.Force(*version); err != nil {
-			return fmt.Errorf("migration force failed: %w", err)
-		}
-		fmt.Printf("migration forced to version %d\n", *version)
+		return runForce(m, *version)
 	case "version":
-		v, dirty, err := m.Version()
-		if err != nil {
-			return fmt.Errorf("failed to get version: %w", err)
-		}
-		if dirty {
-			fmt.Printf("version: %d (dirty)\n", v)
-		} else {
-			fmt.Printf("version: %d\n", v)
-		}
+		return runVersion(m)
 	default:
 		return fmt.Errorf("unknown command: %s", *command)
 	}
+}
 
+func runUp(m *migrate.Migrate) error {
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migration up failed: %w", err)
+	}
+	fmt.Println("migrations applied successfully")
+	return nil
+}
+
+func runDown(m *migrate.Migrate) error {
+	if err := m.Down(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migration down failed: %w", err)
+	}
+	fmt.Println("migration down completed")
+	return nil
+}
+
+func runReset(m *migrate.Migrate) error {
+	if err := m.Down(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migration down failed: %w", err)
+	}
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("migration up failed: %w", err)
+	}
+	fmt.Println("migration reset completed")
+	return nil
+}
+
+func runForce(m *migrate.Migrate, version int) error {
+	if version == 0 {
+		return fmt.Errorf("-version flag is required for force command")
+	}
+	if err := m.Force(version); err != nil {
+		return fmt.Errorf("migration force failed: %w", err)
+	}
+	fmt.Printf("migration forced to version %d\n", version)
+	return nil
+}
+
+func runVersion(m *migrate.Migrate) error {
+	v, dirty, err := m.Version()
+	if err != nil {
+		return fmt.Errorf("failed to get version: %w", err)
+	}
+	if dirty {
+		fmt.Printf("version: %d (dirty)\n", v)
+	} else {
+		fmt.Printf("version: %d\n", v)
+	}
 	return nil
 }
