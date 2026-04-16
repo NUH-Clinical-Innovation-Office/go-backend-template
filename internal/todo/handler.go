@@ -8,8 +8,10 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/your-org/go-backend-template/internal/domain"
 	http2 "github.com/your-org/go-backend-template/internal/http"
 	"github.com/your-org/go-backend-template/internal/middleware"
+	"github.com/your-org/go-backend-template/internal/validator"
 )
 
 // CreateTodoRequest represents a create todo request
@@ -41,11 +43,11 @@ type TodoResponse struct {
 
 // Handler holds todo dependencies
 type Handler struct {
-	svc *Service
+	svc TodoService
 }
 
 // NewHandler creates a new todo handler
-func NewHandler(svc *Service) *Handler {
+func NewHandler(svc TodoService) *Handler {
 	return &Handler{
 		svc: svc,
 	}
@@ -66,8 +68,8 @@ func (h *Handler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := make([]TodoResponse, len(todos))
-	for i, todo := range todos {
-		response[i] = h.toTodoResponse(todo)
+	for i := range todos {
+		response[i] = toTodoResponse(&todos[i])
 	}
 
 	http2.RespondJSON(w, http.StatusOK, response)
@@ -87,8 +89,11 @@ func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Title == "" {
-		http2.RespondError(w, http.StatusBadRequest, "title is required")
+	v := &validator.CreateTodoRequestValidator{
+		Title: req.Title,
+	}
+	if validateErr := v.Validate(); validateErr != nil {
+		http2.RespondError(w, http.StatusBadRequest, validateErr.Error())
 		return
 	}
 
@@ -106,7 +111,7 @@ func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http2.RespondJSON(w, http.StatusCreated, h.toTodoResponse(*todo))
+	http2.RespondJSON(w, http.StatusCreated, toTodoResponse(todo))
 }
 
 // GetHandler handles getting a single todo by ID
@@ -139,7 +144,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http2.RespondJSON(w, http.StatusOK, h.toTodoResponse(*todo))
+	http2.RespondJSON(w, http.StatusOK, toTodoResponse(todo))
 }
 
 // UpdateHandler handles updating a todo
@@ -168,8 +173,11 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Title == "" {
-		http2.RespondError(w, http.StatusBadRequest, "title is required")
+	v := &validator.UpdateTodoRequestValidator{
+		Title: req.Title,
+	}
+	if validateErr := v.Validate(); validateErr != nil {
+		http2.RespondError(w, http.StatusBadRequest, validateErr.Error())
 		return
 	}
 
@@ -191,7 +199,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http2.RespondJSON(w, http.StatusOK, h.toTodoResponse(*todo))
+	http2.RespondJSON(w, http.StatusOK, toTodoResponse(todo))
 }
 
 // DeleteHandler handles deleting a todo
@@ -227,12 +235,15 @@ func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (h *Handler) toTodoResponse(todo interface{}) TodoResponse {
-	switch t := todo.(type) {
-	case TodoResponse:
-		return t
-	default:
-		_ = t
-		return TodoResponse{}
+func toTodoResponse(todo *domain.Todo) TodoResponse {
+	return TodoResponse{
+		ID:          todo.ID.String(),
+		UserID:      todo.UserID.String(),
+		Title:       todo.Title,
+		Description: todo.Description,
+		IsCompleted: todo.IsCompleted,
+		DueDate:     todo.DueDate,
+		CreatedAt:   todo.CreatedAt,
+		UpdatedAt:   todo.UpdatedAt,
 	}
 }

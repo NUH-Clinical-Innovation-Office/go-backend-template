@@ -84,7 +84,7 @@ func run() error {
 
 	// Initialize auth repository and service
 	authRepo := auth.NewRepository(queries)
-	authService := auth.NewService(authRepo, cfg.Auth.JWTSecretKey, time.Duration(cfg.Auth.JWTExpireMinutes)*time.Minute)
+	authService := auth.NewService(authRepo, cfg.Auth.JWTSecretKey, time.Duration(cfg.Auth.JWTExpireMinutes)*time.Minute, cfg.Auth.BcryptCost)
 	authHandler := auth.NewHandler(authService, logger)
 
 	// Initialize todo repository and service
@@ -100,14 +100,16 @@ func run() error {
 
 	// Build router with all dependencies
 	routerConfig := router.RouterConfig{
-		Logger:      logger,
-		Tracer:      tracer,
-		AuthSvc:     authService,
-		TodoService: todoService,
-		AuthHandler: authHandler,
-		TodoHandler: todoHandler,
+		Logger:        logger,
+		Tracer:        tracer,
+		AuthSvc:       authService,
+		TodoService:   todoService,
+		AuthHandler:   authHandler,
+		TodoHandler:   todoHandler,
+		CORSOrigins:   cfg.CORS.AllowedOrigins,
+		CheckDBHealth: func() error { return pool.Ping(context.Background()) },
 	}
-	mux := router.New(routerConfig)
+	mux := router.New(&routerConfig)
 
 	// Start HTTP server
 	return startHTTPServer(cfg, mux, logger)

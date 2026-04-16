@@ -12,6 +12,7 @@ import (
 	"github.com/your-org/go-backend-template/internal/domain"
 	http2 "github.com/your-org/go-backend-template/internal/http"
 	"github.com/your-org/go-backend-template/internal/middleware"
+	"github.com/your-org/go-backend-template/internal/validator"
 	"go.uber.org/zap"
 )
 
@@ -46,12 +47,12 @@ type UserResponse struct {
 
 // Handler holds auth dependencies
 type Handler struct {
-	svc    *Service
+	svc    AuthService
 	logger *zap.Logger
 }
 
 // NewHandler creates a new auth handler
-func NewHandler(svc *Service, logger *zap.Logger) *Handler {
+func NewHandler(svc AuthService, logger *zap.Logger) *Handler {
 	return &Handler{
 		svc:    svc,
 		logger: logger,
@@ -66,8 +67,13 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Email == "" || req.Password == "" || req.ApprovedID == "" {
-		http2.RespondError(w, http.StatusBadRequest, "email, password, and approved_id are required")
+	v := &validator.RegisterRequestValidator{
+		Email:      req.Email,
+		Password:   req.Password,
+		ApprovedID: req.ApprovedID,
+	}
+	if err := v.Validate(); err != nil {
+		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -76,6 +82,10 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("register failed", zap.Error(err))
 		if errors.Is(err, ErrUserNotFound) {
 			http2.RespondError(w, http.StatusNotFound, "approved user not found")
+			return
+		}
+		if errors.Is(err, ErrInvalidCredentials) {
+			http2.RespondError(w, http.StatusBadRequest, "invalid approved_id format")
 			return
 		}
 		if err.Error() == "user already exists" {
@@ -100,8 +110,12 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Email == "" || req.Password == "" {
-		http2.RespondError(w, http.StatusBadRequest, "email and password are required")
+	v := &validator.LoginRequestValidator{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+	if err := v.Validate(); err != nil {
+		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -135,10 +149,17 @@ func (h *Handler) GetMeHandler(w http.ResponseWriter, r *http.Request) {
 		roles[i] = role.Name
 	}
 
+	var email string
+	var firstName string
+	if user.ApprovedUser != nil {
+		email = user.ApprovedUser.Email
+		firstName = user.ApprovedUser.FirstName
+	}
+
 	http2.RespondJSON(w, http.StatusOK, UserResponse{
 		ID:        user.ID.String(),
-		Email:     user.ApprovedUser.Email,
-		FirstName: user.ApprovedUser.FirstName,
+		Email:     email,
+		FirstName: firstName,
 		IsActive:  user.IsActive,
 		Roles:     roles,
 		CreatedAt: user.CreatedAt,
@@ -206,8 +227,12 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if req.Email == "" || req.FirstName == "" {
-		http2.RespondError(w, http.StatusBadRequest, "email and first_name are required")
+	v := &validator.ApprovedUserRequestValidator{
+		Email:     req.Email,
+		FirstName: req.FirstName,
+	}
+	if err := v.Validate(); err != nil {
+		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
@@ -218,7 +243,7 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	approvedUser, err := h.svc.CreateApprovedUser(r.Context(), req.Email, req.FirstName, creator.ID)
+	approvedUser, err := h.svc.CreateApprovedUser(r.Context(), req.Email, req.FirstName, creator.ApprovedUserID)
 	if err != nil {
 		h.logger.Error("create approved user failed", zap.Error(err))
 		if err.Error() == "email already in approved list" {

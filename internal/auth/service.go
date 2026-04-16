@@ -20,17 +20,19 @@ var (
 
 // Service provides authentication business logic
 type Service struct {
-	repo      *Repository
-	jwtSecret []byte
-	jwtExpiry time.Duration
+	repo       UserRepository
+	jwtSecret  []byte
+	jwtExpiry  time.Duration
+	bcryptCost int
 }
 
 // NewService creates a new auth service
-func NewService(repo *Repository, jwtSecret string, jwtExpiry time.Duration) *Service {
+func NewService(repo UserRepository, jwtSecret string, jwtExpiry time.Duration, bcryptCost int) *Service {
 	return &Service{
-		repo:      repo,
-		jwtSecret: []byte(jwtSecret),
-		jwtExpiry: jwtExpiry,
+		repo:       repo,
+		jwtSecret:  []byte(jwtSecret),
+		jwtExpiry:  jwtExpiry,
+		bcryptCost: bcryptCost,
 	}
 }
 
@@ -54,8 +56,8 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 		return "", errors.New("user already exists")
 	}
 
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// Hash password with configurable cost
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), s.bcryptCost)
 	if err != nil {
 		return "", err
 	}
@@ -81,7 +83,7 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 
 	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID.Bytes,
+		"user_id": user.ID.String(),
 		"email":   user.Email,
 		"exp":     time.Now().Add(s.jwtExpiry).Unix(),
 	})
@@ -107,17 +109,13 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 		return "", ErrInvalidCredentials
 	}
 
-	// Get user roles
-	roles, err := s.repo.GetUserRoles(ctx, pgtypeToUuid(user.ID))
-	if err != nil {
-		roles = []db.Role{}
-	}
+	// Get user roles - ignore error, roles are optional
+	_, getRolesErr := s.repo.GetUserRoles(ctx, pgtypeToUuid(user.ID))
+	_ = getRolesErr
 
-	// Get approved user
-	approvedUser, err := s.repo.GetApprovedUserByID(ctx, pgtypeToUuid(user.ApprovedUserID))
-	if err != nil {
-		approvedUser = nil
-	}
+	// Get approved user - not used in login response, ignore error
+	_, getApprovedErr := s.repo.GetApprovedUserByID(ctx, pgtypeToUuid(user.ApprovedUserID))
+	_ = getApprovedErr
 
 	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -130,9 +128,6 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	if err != nil {
 		return "", err
 	}
-
-	_ = approvedUser
-	_ = s.repo.ToDomainUser(user, approvedUser, roles)
 
 	return tokenString, nil
 }

@@ -18,13 +18,13 @@ build-migrate: ## Build the migration binary
 run: ## Run the API server
 	@go run $(MAIN_PATH)
 
-test: ## Run all tests
+test: ## Run all tests (unit + integration via testcontainers)
 	@go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
-test-unit: ## Run unit tests only
+test-unit: ## Run unit tests only (excludes integration tests)
 	@go test -v -short -race -coverprofile=coverage.out -covermode=atomic ./...
 
-test-integration: ## Run integration tests (requires Docker)
+test-integration: ## Run integration tests only (requires Docker - uses testcontainers)
 	@go test -v -tags integration -race -timeout 120s ./internal/integration/...
 
 test-coverage: test ## Run tests with coverage report

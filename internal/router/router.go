@@ -18,16 +18,18 @@ import (
 
 // RouterConfig holds dependencies for router setup
 type RouterConfig struct {
-	Logger      *zap.Logger
-	Tracer      trace.Tracer
-	AuthSvc     appmiddleware.AuthProvider
-	TodoService *todo.Service
-	AuthHandler *auth.Handler
-	TodoHandler *todo.Handler
+	Logger        *zap.Logger
+	Tracer        trace.Tracer
+	AuthSvc       appmiddleware.AuthProvider
+	TodoService   todo.TodoService
+	AuthHandler   *auth.Handler
+	TodoHandler   *todo.Handler
+	CORSOrigins   []string
+	CheckDBHealth func() error
 }
 
 // New creates a new Chi router with all middleware and routes configured
-func New(cfg RouterConfig) *chi.Mux {
+func New(cfg *RouterConfig) *chi.Mux {
 	r := chi.NewMux()
 
 	// Global middleware stack (applied to all routes)
@@ -37,12 +39,12 @@ func New(cfg RouterConfig) *chi.Mux {
 		loggerMiddleware(cfg.Logger),
 		chimiddleware.Recoverer,
 		timeoutMiddleware(30*time.Second),
-		corsMiddleware(),
+		corsMiddleware(cfg.CORSOrigins),
 	)
 
 	// Public routes
 	r.Get("/", rootHandler())
-	r.Get("/health", healthHandler())
+	r.Get("/health", healthHandlerWithDB(cfg.CheckDBHealth))
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {
@@ -101,12 +103,32 @@ func rootHandler() http.HandlerFunc {
 	}
 }
 
-// healthHandler returns health status
-func healthHandler() http.HandlerFunc {
+// healthHandlerWithDB returns health status with database connectivity check
+func healthHandlerWithDB(checkDB func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"status":"healthy"}`)); err != nil {
+
+		type HealthStatus struct {
+			Status   string `json:"status"`
+			Database string `json:"database,omitempty"`
+		}
+
+		status := HealthStatus{Status: "healthy"}
+
+		if checkDB != nil {
+			if err := checkDB(); err != nil {
+				status.Status = "unhealthy"
+				status.Database = "disconnected"
+				w.WriteHeader(http.StatusServiceUnavailable)
+			} else {
+				status.Database = "connected"
+				w.WriteHeader(http.StatusOK)
+			}
+		} else {
+			w.WriteHeader(http.StatusOK)
+		}
+
+		if _, err := w.Write([]byte(`{"status":"` + status.Status + `"}`)); err != nil {
 			http.Error(w, "failed to write response", http.StatusInternalServerError)
 		}
 	}
@@ -177,11 +199,17 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	}
 }
 
-// corsMiddleware handles Cross-Origin Resource Sharing
-func corsMiddleware() func(http.Handler) http.Handler {
+// corsMiddleware handles Cross-Origin Resource Sharing with configurable origins
+func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			origin := r.Header.Get("Origin")
+			if isValidOrigin(origin, allowedOrigins) {
+				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Allow-Credentials", "true")
+			} else {
+				w.Header().Set("Access-Control-Allow-Origin", "*")
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Request-ID")
 			w.Header().Set("Access-Control-Max-Age", "3600")
@@ -194,6 +222,19 @@ func corsMiddleware() func(http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// isValidOrigin checks if the origin is in the allowed list
+func isValidOrigin(origin string, allowedOrigins []string) bool {
+	if origin == "" {
+		return false
+	}
+	for _, allowed := range allowedOrigins {
+		if allowed == "*" || allowed == origin {
+			return true
+		}
+	}
+	return false
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code

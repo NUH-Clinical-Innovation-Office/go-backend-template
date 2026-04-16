@@ -20,11 +20,11 @@ var (
 
 // Service provides todo business logic
 type Service struct {
-	repo *Repository
+	repo TodoRepository
 }
 
 // NewService creates a new todo service
-func NewService(repo *Repository) *Service {
+func NewService(repo TodoRepository) *Service {
 	return &Service{
 		repo: repo,
 	}
@@ -32,8 +32,7 @@ func NewService(repo *Repository) *Service {
 
 // ListByUserID lists all todos for a user
 func (s *Service) ListByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Todo, error) {
-	pgUserID := pgtype.UUID{Bytes: userID, Valid: true}
-	todos, err := s.repo.db.ListTodosByUserID(ctx, pgUserID)
+	todos, err := s.repo.ListTodosByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +47,7 @@ func (s *Service) ListByUserID(ctx context.Context, userID uuid.UUID) ([]domain.
 // GetByID gets a todo by ID, ensuring it belongs to the user
 func (s *Service) GetByID(ctx context.Context, todoID, userID uuid.UUID) (*domain.Todo, error) {
 	pgTodoID := pgtype.UUID{Bytes: todoID, Valid: true}
-	todo, err := s.repo.db.GetTodoByID(ctx, pgTodoID)
+	todo, err := s.repo.GetTodoByID(ctx, pgTodoID)
 	if err != nil {
 		return nil, ErrTodoNotFound
 	}
@@ -57,7 +56,7 @@ func (s *Service) GetByID(ctx context.Context, todoID, userID uuid.UUID) (*domai
 		return nil, ErrTodoNotOwned
 	}
 
-	result := s.toDomainTodo(&todo)
+	result := s.toDomainTodo(todo)
 	return &result, nil
 }
 
@@ -79,7 +78,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title string, de
 	}
 
 	pgUserID := pgtype.UUID{Bytes: userID, Valid: true}
-	todo, err := s.repo.db.CreateTodo(ctx, db.CreateTodoParams{
+	todo, err := s.repo.CreateTodo(ctx, &db.CreateTodoParams{
 		UserID:      pgUserID,
 		Title:       title,
 		Description: desc,
@@ -90,7 +89,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title string, de
 		return nil, err
 	}
 
-	result := s.toDomainTodo(&todo)
+	result := s.toDomainTodo(todo)
 	return &result, nil
 }
 
@@ -103,7 +102,7 @@ func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title st
 	pgTodoID := pgtype.UUID{Bytes: todoID, Valid: true}
 
 	// First verify ownership
-	existing, err := s.repo.db.GetTodoByID(ctx, pgTodoID)
+	existing, err := s.repo.GetTodoByID(ctx, pgTodoID)
 	if err != nil {
 		return nil, ErrTodoNotFound
 	}
@@ -123,7 +122,7 @@ func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title st
 		desc = &d
 	}
 
-	updated, err := s.repo.db.UpdateTodo(ctx, db.UpdateTodoParams{
+	updated, err := s.repo.UpdateTodo(ctx, &db.UpdateTodoParams{
 		ID:          pgTodoID,
 		Title:       title,
 		Description: desc,
@@ -143,7 +142,7 @@ func (s *Service) Delete(ctx context.Context, todoID, userID uuid.UUID) error {
 	pgTodoID := pgtype.UUID{Bytes: todoID, Valid: true}
 
 	// First verify ownership
-	existing, err := s.repo.db.GetTodoByID(ctx, pgTodoID)
+	existing, err := s.repo.GetTodoByID(ctx, pgTodoID)
 	if err != nil {
 		return ErrTodoNotFound
 	}
@@ -152,7 +151,7 @@ func (s *Service) Delete(ctx context.Context, todoID, userID uuid.UUID) error {
 		return ErrTodoNotOwned
 	}
 
-	return s.repo.db.DeleteTodo(ctx, pgTodoID)
+	return s.repo.DeleteTodo(ctx, pgTodoID)
 }
 
 func (s *Service) toDomainTodo(todo *db.Todo) domain.Todo {
