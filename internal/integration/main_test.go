@@ -31,35 +31,6 @@ var (
 func TestMain(m *testing.M) {
 	ctx := context.Background()
 
-	// Check if using external database (e.g., from docker-compose in Makefile)
-	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
-		// Use external database - migrations should already be run
-		testConfig = &config.Config{
-			Database: config.DatabaseConfig{
-				URL:             dbURL,
-				MaxOpenConns:    10,
-				MaxIdleConns:    5,
-				ConnMaxLifetime: 5 * time.Minute,
-			},
-			Auth: config.AuthConfig{
-				JWTSecretKey:     os.Getenv("JWT_SECRET"),
-				JWTExpireMinutes: 60,
-				BcryptCost:       4, // Fast for tests
-			},
-		}
-
-		// Verify database connection and migrations
-		if err := verifyDatabase(); err != nil {
-			fmt.Fprintf(os.Stderr, "Database verification failed: %v\n", err)
-			os.Exit(1)
-		}
-
-		code := m.Run()
-		os.Exit(code)
-		return
-	}
-
-	// Use testcontainers for standalone test runs
 	if err := setupTestContainer(ctx); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to setup test container: %v\n", err)
 		os.Exit(1)
@@ -75,26 +46,10 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func verifyDatabase() error {
-	ctx := context.Background()
-	pool, err := db.New(ctx, testConfig.Database)
-	if err != nil {
-		return fmt.Errorf("failed to connect to database: %w", err)
-	}
-	defer pool.Close()
-
-	// Simple query to verify connection
-	if err := pool.Ping(ctx); err != nil {
-		return fmt.Errorf("database ping failed: %w", err)
-	}
-
-	return nil
-}
-
 func setupTestContainer(ctx context.Context) error {
 	var err error
 	testContainer, err = postgres.Run(ctx,
-		"postgres:16-alpine",
+		"postgres:18-alpine",
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("test"),
 		postgres.WithPassword("test"),
