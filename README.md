@@ -2,6 +2,18 @@
 
 A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 
+## Table of Contents
+
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [API Endpoints](#api-endpoints)
+- [Development](#development)
+- [Observability](#observability)
+- [Database](#database)
+- [License](#license)
+
 ## Features
 
 - **Chi Router**: Lightweight, idiomatic HTTP routing
@@ -13,6 +25,12 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 - **Zap Logging**: Structured, high-performance logging
 - **Database Migrations**: Using golang-migrate
 - **Docker Support**: Multi-stage builds and docker-compose
+- **CORS Middleware**: Cross-origin request handling with configurable origins
+- **Request ID Middleware**: Unique request ID per request for tracing
+- **Real IP Middleware**: Extracts real client IP from proxy headers
+- **Timeout Middleware**: 30-second request timeout protection
+- **Rate Limiting**: Configurable rate limiting per client
+- **Integration Tests**: testcontainers-go for real database testing
 
 ## Project Structure
 
@@ -119,6 +137,12 @@ OTEL_SERVICE_NAME=go-backend-template
 | POST   | `/api/v1/auth/register` | Register new user | No   |
 | POST   | `/api/v1/auth/login`    | Login             | No   |
 
+### User (Authenticated)
+
+| Method | Endpoint     | Description           | Auth     |
+| ------ | ------------ | --------------------- | -------- |
+| GET    | `/api/v1/me` | Get current user info | Required |
+
 ### Todos (User-Scoped)
 
 | Method | Endpoint             | Description    | Auth     |
@@ -148,17 +172,35 @@ OTEL_SERVICE_NAME=go-backend-template
 ## Development
 
 ```bash
-# Run tests
+# Run all tests (unit + integration)
 make test
+
+# Run unit tests only
+make test-unit
+
+# Run integration tests only (requires Docker)
+make test-integration
 
 # Run linter
 make lint
+
+# Format code
+make fmt
+
+# Run go vet
+make vet
 
 # Generate SQLC code
 make generate
 
 # Build binaries
 make build
+
+# Verify (fmt, vet, lint, sqlc-compile, test)
+make verify
+
+# Run full CI pipeline
+make ci
 
 # Clean artifacts
 make clean
