@@ -63,31 +63,28 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 
 ### Prerequisites
 
-- Go 1.22+
+- Go 1.26+
 - PostgreSQL 16+
 - Docker and docker-compose (optional)
 
 ### Using Docker Compose (Recommended)
 
 ```bash
-# Start all services (PostgreSQL, Jaeger, API)
-make docker-up
+# Build and start all services (PostgreSQL, Jaeger, API)
+docker-compose up --build
 
-# Run migrations
+# Run migrations (in a new terminal)
 make migrate-up
 
 # View logs
-make docker-logs
+docker-compose logs -f api
 ```
 
 ### Local Development
 
 ```bash
-# Install dependencies
-make deps
-
 # Generate SQLC code
-make generate
+make sqlc-gen
 
 # Run migrations
 make migrate-up
@@ -109,23 +106,32 @@ Copy `.env.example` to `.env` and configure:
 
 ```bash
 # Server
+SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
-SERVER_HOST=localhost
 
 # Database
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/go_backend_template?sslmode=disable
 
 # JWT
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-JWT_EXPIRY_HOURS=24
+JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRE_MINUTES=1440
+BCRYPT_COST=12
 
 # Logging
 LOG_LEVEL=info
-LOG_FORMAT=console
+LOG_FORMAT=json
 
 # OpenTelemetry
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-OTEL_SERVICE_NAME=go-backend-template
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+SERVICE_NAME=go-backend-template
+
+# Rate Limiting
+RATE_LIMIT_REQUESTS=10
+RATE_LIMIT_DURATION=1m
+
+# CORS
+CORS_ALLOWED_ORIGINS=*
+CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
 ```
 
 ## API Endpoints
