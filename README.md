@@ -29,7 +29,6 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 - **Request ID Middleware**: Unique request ID per request for tracing
 - **Real IP Middleware**: Extracts real client IP from proxy headers
 - **Timeout Middleware**: 30-second request timeout protection
-- **Rate Limiting**: Configurable rate limiting per client
 - **Integration Tests**: testcontainers-go for real database testing
 
 ## Project Structure
@@ -53,6 +52,8 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 ├── migrations/       # Database migrations
 ├── sql/
 │   └── queries/      # SQLC query definitions
+├── docs/             # Generated documentation
+├── code/             # Additional code samples
 ├── docker-compose.yml
 ├── Dockerfile
 ├── Makefile
@@ -124,10 +125,6 @@ LOG_FORMAT=json
 # OpenTelemetry
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
 SERVICE_NAME=go-backend-template
-
-# Rate Limiting
-RATE_LIMIT_REQUESTS=10
-RATE_LIMIT_DURATION=1m
 
 # CORS
 CORS_ALLOWED_ORIGINS=*
