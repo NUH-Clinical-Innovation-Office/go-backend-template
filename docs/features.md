@@ -17,7 +17,7 @@
 | Request ID Middleware | stable | Unique request ID per request for tracing |
 | Real IP Middleware | stable | Extracts real client IP from proxy headers |
 | Timeout Middleware | stable | 30-second request timeout |
-| Rate Limiting | stable | Configurable rate limiting |
+| Rate Limiting | planned | Configurable rate limiting (config exists but middleware not wired up) |
 | Integration Tests | stable | testcontainers-go for real database testing |
 
 ## API Features

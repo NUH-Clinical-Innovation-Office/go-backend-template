@@ -24,13 +24,12 @@ Admin endpoints require the `admin` role in the JWT claims.
 GET /health
 ```
 
-Returns database connectivity status.
+Returns server status.
 
 **Response:**
 ```json
 {
-  "status": "healthy",
-  "db": "connected"
+  "status": "healthy"
 }
 ```
 
@@ -66,25 +65,22 @@ Register a new user. Only users with pre-approved emails can register.
 ```json
 {
   "email": "user@example.com",
-  "password": "securePassword123"
+  "password": "securePassword123",
+  "approved_id": "approval-uuid-here"
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "roles": ["user"]
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
 }
 ```
 
 **Errors:**
 - `400` - Invalid request body
-- `401` - Email not approved
+- `401` - Email not approved or invalid approved_id
 - `409` - Email already registered
 
 ---
@@ -108,12 +104,8 @@ Authenticate and receive a JWT token.
 **Response (200):**
 ```json
 {
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "roles": ["user"]
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
 }
 ```
 
@@ -143,7 +135,10 @@ Authorization: Bearer <token>
 {
   "id": "uuid",
   "email": "user@example.com",
-  "roles": ["user"]
+  "first_name": "",
+  "is_active": true,
+  "roles": ["user"],
+  "created_at": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -199,7 +194,8 @@ Authorization: Bearer <token>
 ```json
 {
   "title": "New todo",
-  "completed": false
+  "description": "Optional description",
+  "due_date": "2024-12-31T23:59:59Z"
 }
 ```
 
@@ -262,7 +258,9 @@ Authorization: Bearer <token>
 ```json
 {
   "title": "Updated title",
-  "completed": true
+  "description": "Updated description",
+  "is_completed": true,
+  "due_date": "2024-12-31T23:59:59Z"
 }
 ```
 
