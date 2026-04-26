@@ -17,7 +17,6 @@
 | Request ID Middleware | stable | Unique request ID per request for tracing |
 | Real IP Middleware | stable | Extracts real client IP from proxy headers |
 | Timeout Middleware | stable | 30-second request timeout |
-| Rate Limiting | stable | Configurable rate limiting |
 | Integration Tests | stable | testcontainers-go for real database testing |
 
 ## API Features
@@ -34,6 +33,7 @@
 
 | Feature | Status | Description |
 |---------|--------|-------------|
+| Rate Limiting | planned | Config exists but middleware not wired up |
 | Refresh Tokens | planned | JWT refresh token flow |
 | WebSocket Support | planned | Real-time communication |
 | Email Verification | planned | Email-based user verification |
