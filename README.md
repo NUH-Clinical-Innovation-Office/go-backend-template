@@ -4,74 +4,32 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 
 ## Table of Contents
 
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
 - [Configuration](#configuration)
+- [Project Architecture](#project-architecture)
+- [Project Structure](#project-structure)
+- [Commands](#commands)
+- [Features](#features)
 - [API Endpoints](#api-endpoints)
-- [Development](#development)
 - [Observability](#observability)
 - [Database](#database)
+- [Contributing](#contributing)
 - [License](#license)
+- [Documentation](#documentation)
 
-## Features
+## Prerequisites
 
-- **Chi Router**: Lightweight, idiomatic HTTP routing
-- **sqlc**: Type-safe SQL code generation
-- **PostgreSQL**: Primary database with pgx driver
-- **JWT Authentication**: Secure token-based auth with bcrypt password hashing
-- **Approved Users Gate**: Email whitelist for controlled registration
-- **OpenTelemetry**: Distributed tracing with Jaeger/OTLP support
-- **Zap Logging**: Structured, high-performance logging
-- **Database Migrations**: Using golang-migrate
-- **Docker Support**: Multi-stage builds and docker-compose
-- **CORS Middleware**: Cross-origin request handling with configurable origins
-- **Request ID Middleware**: Unique request ID per request for tracing
-- **Real IP Middleware**: Extracts real client IP from proxy headers
-- **Timeout Middleware**: 30-second request timeout protection
-- **Integration Tests**: testcontainers-go for real database testing
-
-## Project Structure
-
-```
-.
-├── cmd/
-│   ├── api/          # API entry point
-│   └── migrate/      # Migration CLI tool
-├── internal/
-│   ├── auth/         # Authentication feature
-│   ├── config/       # Configuration loading
-│   ├── db/           # Database connection and SQLC generated code
-│   ├── domain/       # Shared domain models
-│   ├── http/         # HTTP utilities
-│   ├── logging/      # Logging setup
-│   ├── middleware/   # HTTP middleware
-│   ├── observability/# OpenTelemetry setup
-│   ├── router/       # Router configuration
-│   └── todo/         # Todo feature (example CRUD)
-├── migrations/       # Database migrations
-├── sql/
-│   └── queries/      # SQLC query definitions
-├── docs/             # Generated documentation
-├── code/             # Additional code samples
-├── docker-compose.yml
-├── Dockerfile
-├── Makefile
-└── sqlc.yaml
-```
-
-## Quick Start
-
-### Prerequisites
-
-- Go 1.26+
+- Go 1.23+
 - PostgreSQL 16+
 - Docker and docker-compose (optional)
+
+## Installation
 
 ### Using Docker Compose (Recommended)
 
 ```bash
-# Build and start all services (PostgreSQL, Jaeger, API)
+# Build and start all services (PostgreSQL, API)
 docker-compose up --build
 
 # Run migrations (in a new terminal)
@@ -84,6 +42,9 @@ docker-compose logs -f api
 ### Local Development
 
 ```bash
+# Install required tools
+make install-tools
+
 # Generate SQLC code
 make sqlc-gen
 
@@ -92,13 +53,6 @@ make migrate-up
 
 # Start the API
 make run
-```
-
-### Manual Docker Build
-
-```bash
-# Build and start
-docker-compose up --build
 ```
 
 ## Configuration
@@ -130,6 +84,112 @@ SERVICE_NAME=go-backend-template
 CORS_ALLOWED_ORIGINS=*
 CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
 ```
+
+## Project Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        API Server                           │
+│  Chi Router + Middleware (CORS, Timeout, RequestID, etc.)  │
+├─────────────────────────────────────────────────────────────┤
+│  Handlers          │  Services        │  Repositories     │
+│  - Auth Handler    │  - Auth Service  │  - User Repo      │
+│  - Todo Handler    │  - Todo Service  │  - Todo Repo      │
+│  - Admin Handler   │                  │  - ApprovedUsers  │
+├─────────────────────────────────────────────────────────────┤
+│                    Database Layer                          │
+│         sqlc (type-safe SQL) + pgx driver                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The template uses a layered architecture:
+- **Handlers**: HTTP request/response handling, input validation
+- **Services**: Business logic, orchestration
+- **Repositories**: Data access, SQLC generated type-safe queries
+- **Middleware**: Cross-cutting concerns (auth, logging, tracing)
+
+## Project Structure
+
+```
+.
+├── cmd/
+│   ├── api/          # API entry point
+│   └── migrate/      # Migration CLI tool
+├── internal/
+│   ├── auth/         # Authentication feature
+│   ├── config/       # Configuration loading
+│   ├── db/           # Database connection and SQLC generated code
+│   ├── domain/       # Shared domain models
+│   ├── http/         # HTTP utilities
+│   ├── logging/      # Logging setup
+│   ├── middleware/   # HTTP middleware
+│   ├── observability/# OpenTelemetry setup
+│   ├── router/       # Router configuration
+│   └── todo/         # Todo feature (example CRUD)
+├── migrations/       # Database migrations
+├── sql/
+│   └── queries/      # SQLC query definitions
+├── docs/             # Generated documentation
+├── code/             # Additional code samples
+├── docker-compose.yml
+├── Dockerfile
+├── Makefile
+└── sqlc.yaml
+```
+
+## Commands
+
+```bash
+# Run all tests (unit + integration)
+make test
+
+# Run unit tests only
+make test-unit
+
+# Run integration tests only (requires Docker)
+make test-integration
+
+# Run linter
+make lint
+
+# Format code
+make fmt
+
+# Run go vet
+make vet
+
+# Generate SQLC code
+make sqlc-gen
+
+# Build binaries
+make build
+
+# Verify (fmt, vet, lint, sqlc-compile, test)
+make verify
+
+# Run full CI pipeline
+make ci
+
+# Clean artifacts
+make clean
+```
+
+## Features
+
+- **Chi Router**: Lightweight, idiomatic HTTP routing
+- **sqlc**: Type-safe SQL code generation
+- **PostgreSQL**: Primary database with pgx driver
+- **JWT Authentication**: Secure token-based auth with bcrypt password hashing
+- **Approved Users Gate**: Email whitelist for controlled registration
+- **OpenTelemetry**: Distributed tracing with OTLP support
+- **Zap Logging**: Structured, high-performance logging
+- **Database Migrations**: Using golang-migrate
+- **Docker Support**: Multi-stage builds and docker-compose
+- **CORS Middleware**: Cross-origin request handling with configurable origins
+- **Request ID Middleware**: Unique request ID per request for tracing
+- **Real IP Middleware**: Extracts real client IP from proxy headers
+- **Timeout Middleware**: 30-second request timeout protection
+- **Integration Tests**: testcontainers-go for real database testing
 
 ## API Endpoints
 
@@ -172,48 +232,11 @@ CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
 | GET    | `/health` | Health check | No   |
 | GET    | `/`       | API info     | No   |
 
-## Development
-
-```bash
-# Run all tests (unit + integration)
-make test
-
-# Run unit tests only
-make test-unit
-
-# Run integration tests only (requires Docker)
-make test-integration
-
-# Run linter
-make lint
-
-# Format code
-make fmt
-
-# Run go vet
-make vet
-
-# Generate SQLC code
-make generate
-
-# Build binaries
-make build
-
-# Verify (fmt, vet, lint, sqlc-compile, test)
-make verify
-
-# Run full CI pipeline
-make ci
-
-# Clean artifacts
-make clean
-```
-
 ## Observability
 
 ### Tracing
 
-Traces are exported to Jaeger via OTLP. Access the UI at `http://localhost:16686`.
+Traces are exported via OTLP. Configure the endpoint via `OTEL_EXPORTER_OTLP_ENDPOINT`.
 
 ### Logging
 
@@ -255,9 +278,19 @@ make migrate-version
 Queries are defined in `sql/queries/`. After modifying:
 
 ```bash
-make generate
+make sqlc-gen
 ```
+
+## Contributing
+
+See [docs/contributing.md](./docs/contributing.md) for development guidelines.
 
 ## License
 
 MIT
+
+## Documentation
+
+- [Features](./docs/features.md) - Feature inventory with implementation status
+- [API Reference](./docs/api.md) - Complete API endpoint documentation
+- [Contributing Guide](./docs/contributing.md) - Development setup and guidelines
