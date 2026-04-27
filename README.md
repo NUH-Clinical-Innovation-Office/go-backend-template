@@ -283,7 +283,7 @@ make sqlc-gen
 
 ## Contributing
 
-See [docs/contributing](./docs/contributing.md) for development guidelines.
+See [docs/contributing.md](./docs/contributing.md) for development guidelines.
 
 ## License
 
@@ -293,3 +293,4 @@ MIT
 
 - [Features](./docs/features.md) - Feature inventory with implementation status
 - [API Reference](./docs/api.md) - Complete API endpoint documentation
+- [Contributing Guide](./docs/contributing.md) - Development setup and guidelines
