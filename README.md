@@ -4,69 +4,28 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 
 ## Table of Contents
 
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
+- [Project Description](#project-description)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
 - [Configuration](#configuration)
-- [API Endpoints](#api-endpoints)
-- [Development](#development)
-- [Observability](#observability)
-- [Database](#database)
+- [Project Architecture](#project-architecture)
+- [Project Structure](#project-structure)
+- [Commands](#commands)
+- [Contributing](#contributing)
 - [License](#license)
+- [Documentation](#documentation)
 
-## Features
+## Project Description
 
-- **Chi Router**: Lightweight, idiomatic HTTP routing
-- **sqlc**: Type-safe SQL code generation
-- **PostgreSQL**: Primary database with pgx driver
-- **JWT Authentication**: Secure token-based auth with bcrypt password hashing
-- **Approved Users Gate**: Email whitelist for controlled registration
-- **OpenTelemetry**: Distributed tracing with Jaeger/OTLP support
-- **Zap Logging**: Structured, high-performance logging
-- **Database Migrations**: Using golang-migrate
-- **Docker Support**: Multi-stage builds and docker-compose
-- **CORS Middleware**: Cross-origin request handling with configurable origins
-- **Request ID Middleware**: Unique request ID per request for tracing
-- **Real IP Middleware**: Extracts real client IP from proxy headers
-- **Timeout Middleware**: 30-second request timeout protection
-- **Integration Tests**: testcontainers-go for real database testing
+A production-ready Go backend template with Chi router, sqlc for type-safe SQL, PostgreSQL database, JWT authentication, approved users gate, OpenTelemetry distributed tracing, and Zap structured logging.
 
-## Project Structure
-
-```
-.
-├── cmd/
-│   ├── api/          # API entry point
-│   └── migrate/      # Migration CLI tool
-├── internal/
-│   ├── auth/         # Authentication feature
-│   ├── config/       # Configuration loading
-│   ├── db/           # Database connection and SQLC generated code
-│   ├── domain/       # Shared domain models
-│   ├── http/         # HTTP utilities
-│   ├── logging/      # Logging setup
-│   ├── middleware/   # HTTP middleware
-│   ├── observability/# OpenTelemetry setup
-│   ├── router/       # Router configuration
-│   └── todo/         # Todo feature (example CRUD)
-├── migrations/       # Database migrations
-├── sql/
-│   └── queries/      # SQLC query definitions
-├── docs/             # Generated documentation
-├── code/             # Additional code samples
-├── docker-compose.yml
-├── Dockerfile
-├── Makefile
-└── sqlc.yaml
-```
-
-## Quick Start
-
-### Prerequisites
+## Prerequisites
 
 - Go 1.26+
 - PostgreSQL 16+
 - Docker and docker-compose (optional)
+
+## Installation
 
 ### Using Docker Compose (Recommended)
 
@@ -94,170 +53,177 @@ make migrate-up
 make run
 ```
 
-### Manual Docker Build
-
-```bash
-# Build and start
-docker-compose up --build
-```
-
 ## Configuration
 
 Copy `.env.example` to `.env` and configure:
 
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SERVER_HOST` | Server bind host | `"0.0.0.0"` |
+| `SERVER_PORT` | Server port | `8080` |
+| `SERVER_READ_TIMEOUT` | Read timeout | `30s` |
+| `SERVER_WRITE_TIMEOUT` | Write timeout | `30s` |
+| `DATABASE_URL` | PostgreSQL connection URL | **required** |
+| `DATABASE_MAX_OPEN_CONNS` | Max open connections | `25` |
+| `DATABASE_MAX_IDLE_CONNS` | Max idle connections | `5` |
+| `DATABASE_CONN_MAX_LIFETIME` | Connection max lifetime | `5m` |
+| `JWT_SECRET_KEY` | JWT signing secret | **required** |
+| `JWT_EXPIRE_MINUTES` | JWT expiry in minutes | `1440` |
+| `BCRYPT_COST` | Bcrypt hashing cost | `12` |
+| `LOG_LEVEL` | Log level | `"info"` |
+| `LOG_FORMAT` | Log format (`json` or `console`) | `"json"` |
+| `TRACING_ENABLED` | Enable OpenTelemetry tracing | `true` |
+| `SERVICE_NAME` | Service name for telemetry | `"go-backend-template"` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP endpoint | `"http://localhost:4318"` |
+| `OTEL_EXPORTER_OTLP_INSECURE` | Allow insecure OTLP | `true` |
+| `RATE_LIMIT_REQUESTS` | Requests per period | `100` |
+| `RATE_LIMIT_DURATION` | Rate limit period | `1m` |
+| `CORS_ALLOWED_ORIGINS` | Allowed CORS origins | `*` |
+| `CORS_ALLOWED_METHODS` | Allowed HTTP methods | `GET,POST,PUT,DELETE,OPTIONS` |
+| `CORS_ALLOWED_HEADERS` | Allowed request headers | `Accept,Authorization,Content-Type` |
+| `CORS_ALLOW_CREDENTIALS` | Allow credentials | `true` |
+| `CORS_MAX_AGE` | Preflight cache max age | `3600` |
+
+## Project Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         API Entry (cmd/api)                         │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│                    Chi Router (internal/router)                      │
+│  ┌─────────────┐ ┌──────────┐ ┌────────┐ ┌───────────┐             │
+│  │ RequestID   │ │ RealIP   │ │ Logger │ │ Timeout   │  + CORS     │
+│  │ Middleware  │ │          │ │        │ │ (30s)     │             │
+│  └─────────────┘ └──────────┘ └────────┘ └───────────┘             │
+└─────────────────────────────────────────────────────────────────────┘
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+             ┌──────────┐   ┌──────────┐    ┌──────────────┐
+             │  Auth    │   │  Todos   │    │   Admin      │
+             │ Handler  │   │ Handler  │    │   Routes     │
+             └────┬─────┘   └────┬─────┘    └──────┬───────┘
+                  │              │                  │
+                  ▼              ▼                  ▼
+           ┌──────────┐   ┌──────────┐    ┌──────────────┐
+           │  Auth    │   │  Todo    │    │   Auth       │
+           │ Service  │   │ Service  │    │   Service    │
+           └────┬─────┘   └────┬─────┘    └──────┬───────┘
+                │              │                  │
+                ▼              ▼                  ▼
+           ┌──────────┐   ┌──────────┐    ┌──────────────┐
+           │  Auth    │   │  Todo    │    │   Auth        │
+           │ Repository│   │ Repository│   │   Repository  │
+           └────┬─────┘   └────┬─────┘    └──────┬───────┘
+                │              │                  │
+                └──────────────┼──────────────────┘
+                               ▼
+                    ┌─────────────────────┐
+                    │   PostgreSQL (pgx)   │
+                    │   + sqlc generated  │
+                    └─────────────────────┘
+```
+
+### Key Components
+
+| Component | Location | Purpose |
+|-----------|----------|---------|
+| **API Entry** | `cmd/api/` | HTTP server entry point |
+| **Migrate CLI** | `cmd/migrate/` | Database migration runner |
+| **Router** | `internal/router/` | Chi router + middleware |
+| **Auth Handler** | `internal/auth/` | Auth endpoints (register/login/admin) |
+| **Todo Handler** | `internal/todo/` | Todo CRUD endpoints |
+| **Auth Service** | `internal/auth/` | Business logic for auth |
+| **Todo Service** | `internal/todo/` | Business logic for todos |
+| **Domain** | `internal/domain/` | Domain models (User, Todo, etc.) |
+| **Config** | `internal/config/` | Configuration loading |
+| **Middleware** | `internal/middleware/` | Auth + CORS + rate limiting |
+| **Observability** | `internal/observability/` | OpenTelemetry setup |
+| **Logging** | `internal/logging/` | Zap logger setup |
+| **HTTP Utils** | `internal/http/` | Response helpers |
+
+## Project Structure
+
+```
+.
+├── cmd/
+│   ├── api/          # API entry point
+│   └── migrate/      # Migration CLI tool
+├── internal/
+│   ├── auth/         # Authentication handlers, services, repositories
+│   ├── config/       # Configuration loading from environment
+│   ├── db/           # Database connection pool + sqlc generated code
+│   ├── domain/       # Domain models (User, ApprovedUser, Todo, Role)
+│   ├── http/         # HTTP utilities (RespondJSON, RespondError)
+│   ├── logging/      # Zap logger setup with trace context
+│   ├── middleware/   # HTTP middleware (auth, CORS, rate limit, timeout)
+│   ├── observability/ # OpenTelemetry tracing setup
+│   ├── router/       # Chi router configuration and middleware
+│   ├── todo/         # Todo feature handlers, services, repositories
+│   └── validator/    # Input validation (email, password, etc.)
+├── migrations/       # Database migration files (golang-migrate)
+├── sql/
+│   └── queries/      # SQLC query definitions
+├── docs/             # Generated documentation
+├── docker-compose.yml
+├── Dockerfile
+├── Makefile
+├── go.mod
+└── sqlc.yaml
+```
+
+## Commands
+
 ```bash
-# Server
-SERVER_HOST=0.0.0.0
-SERVER_PORT=8080
+# Build and run
+make build            # Build the API binary
+make run              # Run the API server
+
+# Testing
+make test             # Run all tests (unit + integration)
+make test-unit        # Run unit tests only
+make test-integration # Run integration tests only (requires Docker)
+make test-coverage    # Run tests with coverage report
+
+# Code quality
+make lint             # Run golangci-lint
+make fmt              # Format code
+make vet              # Run go vet
+make tidy             # Tidy go modules
 
 # Database
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/go_backend_template?sslmode=disable
+make migrate-up       # Apply all migrations
+make migrate-down     # Rollback last migration
+make migrate-reset    # Reset database
+make migrate-version  # Show current migration version
 
-# JWT
-JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
-JWT_EXPIRE_MINUTES=1440
-BCRYPT_COST=12
+# Code generation
+make sqlc-gen         # Generate sqlc code
+make sqlc-compile     # Validate sqlc schema/queries
 
-# Logging
-LOG_LEVEL=info
-LOG_FORMAT=json
+# Docker
+make docker-build     # Build Docker image
 
-# OpenTelemetry
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
-SERVICE_NAME=go-backend-template
+# Full verification
+make verify           # Run fmt, vet, lint, sqlc-compile, test
+make ci               # Run full CI pipeline
 
-# CORS
-CORS_ALLOWED_ORIGINS=*
-CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
+# Cleanup
+make clean            # Clean build artifacts
 ```
 
-## API Endpoints
+## Contributing
 
-### Authentication
-
-| Method | Endpoint                | Description       | Auth |
-| ------ | ----------------------- | ----------------- | ---- |
-| POST   | `/api/v1/auth/register` | Register new user | No   |
-| POST   | `/api/v1/auth/login`    | Login             | No   |
-
-### User (Authenticated)
-
-| Method | Endpoint     | Description           | Auth     |
-| ------ | ------------ | --------------------- | -------- |
-| GET    | `/api/v1/me` | Get current user info | Required |
-
-### Todos (User-Scoped)
-
-| Method | Endpoint             | Description    | Auth     |
-| ------ | -------------------- | -------------- | -------- |
-| GET    | `/api/v1/todos`      | List all todos | Required |
-| POST   | `/api/v1/todos`      | Create todo    | Required |
-| GET    | `/api/v1/todos/{id}` | Get todo by ID | Required |
-| PUT    | `/api/v1/todos/{id}` | Update todo    | Required |
-| DELETE | `/api/v1/todos/{id}` | Delete todo    | Required |
-
-### Admin (Approved Users Management)
-
-| Method | Endpoint                            | Description          | Auth  |
-| ------ | ----------------------------------- | -------------------- | ----- |
-| GET    | `/api/v1/admin/approved-users`      | List approved users  | Admin |
-| POST   | `/api/v1/admin/approved-users`      | Create approved user | Admin |
-| POST   | `/api/v1/admin/approved-users/bulk` | Bulk create          | Admin |
-| DELETE | `/api/v1/admin/approved-users/{id}` | Delete approved user | Admin |
-
-### Health
-
-| Method | Endpoint  | Description  | Auth |
-| ------ | --------- | ------------ | ---- |
-| GET    | `/health` | Health check | No   |
-| GET    | `/`       | API info     | No   |
-
-## Development
-
-```bash
-# Run all tests (unit + integration)
-make test
-
-# Run unit tests only
-make test-unit
-
-# Run integration tests only (requires Docker)
-make test-integration
-
-# Run linter
-make lint
-
-# Format code
-make fmt
-
-# Run go vet
-make vet
-
-# Generate SQLC code
-make generate
-
-# Build binaries
-make build
-
-# Verify (fmt, vet, lint, sqlc-compile, test)
-make verify
-
-# Run full CI pipeline
-make ci
-
-# Clean artifacts
-make clean
-```
-
-## Observability
-
-### Tracing
-
-Traces are exported to Jaeger via OTLP. Access the UI at `http://localhost:16686`.
-
-### Logging
-
-Structured JSON logs (in production) with trace context:
-
-```json
-{
-  "level": "info",
-  "msg": "request completed",
-  "timestamp": "2024-01-01T00:00:00Z",
-  "trace_id": "abc123",
-  "span_id": "def456",
-  "method": "GET",
-  "path": "/api/v1/todos",
-  "status": 200
-}
-```
-
-## Database
-
-### Running Migrations
-
-```bash
-# Apply all migrations
-make migrate-up
-
-# Rollback one migration
-make migrate-down
-
-# Reset database
-make migrate-reset
-
-# Check version
-make migrate-version
-```
-
-### SQLC
-
-Queries are defined in `sql/queries/`. After modifying:
-
-```bash
-make generate
-```
+Contributions are welcome. Please ensure code passes `make verify` before submitting PRs.
 
 ## License
 
 MIT
+
+## Documentation
+
+- [API Reference](docs/api.md) - Complete API endpoint documentation
+- [Features](docs/features.md) - Feature inventory with implementation status
