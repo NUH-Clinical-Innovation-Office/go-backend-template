@@ -60,32 +60,29 @@ Returns API information.
 POST /api/v1/auth/register
 ```
 
-Register a new user. Only users with pre-approved emails can register.
+Register a new user. Requires a valid `approved_id` (UUID of a pre-approved user).
 
 **Request Body:**
 ```json
 {
   "email": "user@example.com",
-  "password": "securePassword123"
+  "password": "securePassword123",
+  "approved_id": "uuid-of-approved-user"
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "roles": ["user"]
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
 }
 ```
 
 **Errors:**
 - `400` - Invalid request body
-- `401` - Email not approved
-- `409` - Email already registered
+- `404` - Approved user not found
+- `409` - User already exists
 
 ---
 
@@ -108,12 +105,8 @@ Authenticate and receive a JWT token.
 **Response (200):**
 ```json
 {
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "roles": ["user"]
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
 }
 ```
 
@@ -169,17 +162,18 @@ Authorization: Bearer <token>
 
 **Response (200):**
 ```json
-{
-  "todos": [
-    {
-      "id": "uuid",
-      "title": "Todo title",
-      "completed": false,
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "user_id": "uuid",
+    "title": "Todo title",
+    "description": "Todo description",
+    "is_completed": false,
+    "due_date": "2024-01-01T00:00:00Z",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-01T00:00:00Z"
+  }
+]
 ```
 
 ---
@@ -199,20 +193,22 @@ Authorization: Bearer <token>
 ```json
 {
   "title": "New todo",
-  "completed": false
+  "description": "Optional description",
+  "due_date": "2024-01-01T00:00:00Z"
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "todo": {
-    "id": "uuid",
-    "title": "New todo",
-    "completed": false,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-  }
+  "id": "uuid",
+  "user_id": "uuid",
+  "title": "New todo",
+  "description": "Optional description",
+  "is_completed": false,
+  "due_date": "2024-01-01T00:00:00Z",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -232,13 +228,14 @@ Authorization: Bearer <token>
 **Response (200):**
 ```json
 {
-  "todo": {
-    "id": "uuid",
-    "title": "Todo title",
-    "completed": false,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-  }
+  "id": "uuid",
+  "user_id": "uuid",
+  "title": "Todo title",
+  "description": "Todo description",
+  "is_completed": false,
+  "due_date": "2024-01-01T00:00:00Z",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -262,20 +259,23 @@ Authorization: Bearer <token>
 ```json
 {
   "title": "Updated title",
-  "completed": true
+  "description": "Updated description",
+  "is_completed": true,
+  "due_date": "2024-01-01T00:00:00Z"
 }
 ```
 
 **Response (200):**
 ```json
 {
-  "todo": {
-    "id": "uuid",
-    "title": "Updated title",
-    "completed": true,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-  }
+  "id": "uuid",
+  "user_id": "uuid",
+  "title": "Updated title",
+  "description": "Updated description",
+  "is_completed": true,
+  "due_date": "2024-01-01T00:00:00Z",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -319,15 +319,15 @@ Authorization: Bearer <token>
 
 **Response (200):**
 ```json
-{
-  "approved_users": [
-    {
-      "id": "uuid",
-      "email": "approved@example.com",
-      "created_at": "2024-01-01T00:00:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "email": "approved@example.com",
+    "first_name": "John",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-01T00:00:00Z"
+  }
+]
 ```
 
 ---
@@ -346,18 +346,19 @@ Authorization: Bearer <token>
 **Request Body:**
 ```json
 {
-  "email": "newuser@example.com"
+  "email": "newuser@example.com",
+  "first_name": "John"
 }
 ```
 
 **Response (201):**
 ```json
 {
-  "approved_user": {
-    "id": "uuid",
-    "email": "newuser@example.com",
-    "created_at": "2024-01-01T00:00:00Z"
-  }
+  "id": "uuid",
+  "email": "newuser@example.com",
+  "first_name": "John",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -377,29 +378,37 @@ Authorization: Bearer <token>
 **Request Body:**
 ```json
 {
-  "emails": [
-    "user1@example.com",
-    "user2@example.com"
+  "users": [
+    {
+      "email": "user1@example.com",
+      "first_name": "User1"
+    },
+    {
+      "email": "user2@example.com",
+      "first_name": "User2"
+    }
   ]
 }
 ```
 
 **Response (201):**
 ```json
-{
-  "approved_users": [
-    {
-      "id": "uuid",
-      "email": "user1@example.com",
-      "created_at": "2024-01-01T00:00:00Z"
-    },
-    {
-      "id": "uuid",
-      "email": "user2@example.com",
-      "created_at": "2024-01-01T00:00:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "email": "user1@example.com",
+    "first_name": "User1",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "uuid",
+    "email": "user2@example.com",
+    "first_name": "User2",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-01T00:00:00Z"
+  }
+]
 ```
 
 ---
