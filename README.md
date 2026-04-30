@@ -258,6 +258,11 @@ Queries are defined in `sql/queries/`. After modifying:
 make generate
 ```
 
+## Documentation
+
+- [API Reference](docs/api.md)
+- [Features](docs/features.md)
+
 ## License
 
 MIT
