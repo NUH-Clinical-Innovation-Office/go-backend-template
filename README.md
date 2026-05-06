@@ -107,11 +107,14 @@ Copy `.env.example` to `.env` and configure:
 
 ```bash
 # Server
-SERVER_HOST=0.0.0.0
+SERVER_HOST=localhost
 SERVER_PORT=8080
 
 # Database
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/go_backend_template?sslmode=disable
+DATABASE_MAX_OPEN_CONNS=25
+DATABASE_IDLE_CONNS=5
+DATABASE_CONN_MAX_LIFETIME=5m
 
 # JWT
 JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
@@ -120,15 +123,24 @@ BCRYPT_COST=12
 
 # Logging
 LOG_LEVEL=info
-LOG_FORMAT=json
+LOG_FORMAT=console
 
 # OpenTelemetry
 OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+OTEL_EXPORTER_OTLP_INSECURE=true
+OTEL_TRACE_SAMPLING_RATIO=1.0
 SERVICE_NAME=go-backend-template
 
 # CORS
 CORS_ALLOWED_ORIGINS=*
 CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
+CORS_ALLOWED_HEADERS=Accept,Authorization,Content-Type
+CORS_ALLOW_CREDENTIALS=true
+CORS_MAX_AGE=3600
+
+# Rate Limiting (planned - configuration exists, middleware not yet implemented)
+RATE_LIMIT_REQUESTS=10
+RATE_LIMIT_DURATION=1m
 ```
 
 ## API Endpoints
