@@ -194,7 +194,7 @@ make fmt
 make vet
 
 # Generate SQLC code
-make generate
+make sqlc-gen
 
 # Build binaries
 make build
