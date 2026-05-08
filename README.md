@@ -85,7 +85,7 @@ docker-compose logs -f api
 
 ```bash
 # Generate SQLC code
-make sqlc-gen
+make generate
 
 # Run migrations
 make migrate-up
@@ -117,6 +117,10 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/go_backend_template?ssl
 JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
 JWT_EXPIRE_MINUTES=1440
 BCRYPT_COST=12
+
+# Rate Limiting
+RATE_LIMIT_REQUESTS=10
+RATE_LIMIT_DURATION=1m
 
 # Logging
 LOG_LEVEL=info
