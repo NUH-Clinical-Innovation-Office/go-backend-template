@@ -24,13 +24,20 @@ Admin endpoints require the `admin` role in the JWT claims.
 GET /health
 ```
 
-Returns database connectivity status.
+Returns API health status with database connectivity check.
 
-**Response:**
+**Response (200 - healthy):**
 ```json
 {
-  "status": "healthy",
-  "db": "connected"
+  "status": "healthy"
+}
+```
+
+**Response (503 - unhealthy):**
+```json
+{
+  "status": "unhealthy",
+  "database": "disconnected"
 }
 ```
 
@@ -40,13 +47,13 @@ Returns database connectivity status.
 GET /
 ```
 
-Returns API information.
+Returns API version and status.
 
 **Response:**
 ```json
 {
-  "name": "go-backend-template",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "status": "running"
 }
 ```
 
@@ -159,7 +166,7 @@ All todo endpoints require authentication.
 ### List Todos
 
 ```
-GET /api/v1/todos/
+GET /api/v1/todos
 ```
 
 **Headers:**
@@ -167,19 +174,21 @@ GET /api/v1/todos/
 Authorization: Bearer <token>
 ```
 
-**Response (200):**
+**Response (200):** Returns an array of todo objects.
+
 ```json
-{
-  "todos": [
-    {
-      "id": "uuid",
-      "title": "Todo title",
-      "completed": false,
-      "created_at": "2024-01-01T00:00:00Z",
-      "updated_at": "2024-01-01T00:00:00Z"
-    }
-  ]
-}
+[
+  {
+    "id": "uuid",
+    "user_id": "uuid",
+    "title": "Todo title",
+    "description": "Optional description",
+    "is_completed": false,
+    "due_date": "2024-01-01T00:00:00Z",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-01T00:00:00Z"
+  }
+]
 ```
 
 ---
@@ -187,7 +196,7 @@ Authorization: Bearer <token>
 ### Create Todo
 
 ```
-POST /api/v1/todos/
+POST /api/v1/todos
 ```
 
 **Headers:**
@@ -199,20 +208,23 @@ Authorization: Bearer <token>
 ```json
 {
   "title": "New todo",
-  "completed": false
+  "description": "Optional description",
+  "due_date": "2024-01-01T00:00:00Z"
 }
 ```
 
-**Response (201):**
+**Response (201):** Returns the created todo object directly (not wrapped).
+
 ```json
 {
-  "todo": {
-    "id": "uuid",
-    "title": "New todo",
-    "completed": false,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-  }
+  "id": "uuid",
+  "user_id": "uuid",
+  "title": "New todo",
+  "description": "Optional description",
+  "is_completed": false,
+  "due_date": "2024-01-01T00:00:00Z",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
@@ -229,20 +241,23 @@ GET /api/v1/todos/{id}
 Authorization: Bearer <token>
 ```
 
-**Response (200):**
+**Response (200):** Returns the todo object directly (not wrapped).
+
 ```json
 {
-  "todo": {
-    "id": "uuid",
-    "title": "Todo title",
-    "completed": false,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-  }
+  "id": "uuid",
+  "user_id": "uuid",
+  "title": "Todo title",
+  "description": "Optional description",
+  "is_completed": false,
+  "due_date": "2024-01-01T00:00:00Z",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
 **Errors:**
+- `400` - Invalid id format
 - `404` - Todo not found
 
 ---
@@ -262,24 +277,29 @@ Authorization: Bearer <token>
 ```json
 {
   "title": "Updated title",
-  "completed": true
+  "description": "Updated description",
+  "is_completed": true,
+  "due_date": "2024-01-01T00:00:00Z"
 }
 ```
 
-**Response (200):**
+**Response (200):** Returns the updated todo object directly (not wrapped).
+
 ```json
 {
-  "todo": {
-    "id": "uuid",
-    "title": "Updated title",
-    "completed": true,
-    "created_at": "2024-01-01T00:00:00Z",
-    "updated_at": "2024-01-01T00:00:00Z"
-  }
+  "id": "uuid",
+  "user_id": "uuid",
+  "title": "Updated title",
+  "description": "Updated description",
+  "is_completed": true,
+  "due_date": "2024-01-01T00:00:00Z",
+  "created_at": "2024-01-01T00:00:00Z",
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 
 **Errors:**
+- `400` - Invalid id format
 - `404` - Todo not found
 
 ---
@@ -298,6 +318,7 @@ Authorization: Bearer <token>
 **Response (204):** No content
 
 **Errors:**
+- `400` - Invalid id format
 - `404` - Todo not found
 
 ---
@@ -309,7 +330,7 @@ All admin endpoints require `Authorization: Bearer <token>` with admin role.
 ### List Approved Users
 
 ```
-GET /api/v1/admin/approved-users/
+GET /api/v1/admin/approved-users
 ```
 
 **Headers:**
@@ -335,7 +356,7 @@ Authorization: Bearer <token>
 ### Create Approved User
 
 ```
-POST /api/v1/admin/approved-users/
+POST /api/v1/admin/approved-users
 ```
 
 **Headers:**
