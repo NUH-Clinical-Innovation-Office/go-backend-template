@@ -37,7 +37,7 @@ services:
     container_name: go-backend-template-api
     environment:
       - DATABASE_URL=postgres://${DB_USER:-dev_user}:${DB_PASSWORD:-dev_secure_password_change_me}@postgres:5432/${DB_NAME:-go_backend_template}?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET environment variable is required}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:?JWT_SECRET_KEY environment variable is required}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=${LOG_FORMAT:-json}
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317

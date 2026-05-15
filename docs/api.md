@@ -36,8 +36,7 @@ Returns API health status with database connectivity check.
 **Response (503 - unhealthy):**
 ```json
 {
-  "status": "unhealthy",
-  "database": "disconnected"
+  "status": "unhealthy"
 }
 ```
 
@@ -80,12 +79,8 @@ Register a new user. Only users with pre-approved emails can register.
 **Response (201):**
 ```json
 {
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "roles": ["user"]
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
 }
 ```
 
@@ -115,12 +110,8 @@ Authenticate and receive a JWT token.
 **Response (200):**
 ```json
 {
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "roles": ["user"]
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
 }
 ```
 
@@ -150,7 +141,10 @@ Authorization: Bearer <token>
 {
   "id": "uuid",
   "email": "user@example.com",
-  "roles": ["user"]
+  "first_name": "John",
+  "is_active": true,
+  "roles": ["user"],
+  "created_at": "2024-01-01T00:00:00Z"
 }
 ```
 
