@@ -17,18 +17,17 @@
 | Request ID Middleware | stable | Unique request ID per request for tracing |
 | Real IP Middleware | stable | Extracts real client IP from proxy headers |
 | Timeout Middleware | stable | 30-second request timeout |
-| Rate Limiting | stable | Configurable rate limiting |
 | Integration Tests | stable | testcontainers-go for real database testing |
 
 ## API Features
 
 | Feature | Status | Description |
 |---------|--------|-------------|
-| User Registration | stable | POST /api/v1/auth/register |
+| User Registration | stable | POST /api/v1/auth/register (requires approved_id) |
 | User Login | stable | POST /api/v1/auth/login |
 | Get Current User | stable | GET /api/v1/me |
-| Todo CRUD | stable | Full todo management with user ownership |
-| Approved Users Admin | stable | Admin management of registration whitelist |
+| Todo CRUD | stable | Full todo management with user ownership (supports title, description, is_completed, due_date) |
+| Approved Users Admin | stable | Admin management of registration whitelist (single + bulk create) |
 
 ## Planned Features
 
@@ -38,3 +37,4 @@
 | WebSocket Support | planned | Real-time communication |
 | Email Verification | planned | Email-based user verification |
 | Password Reset | planned | Forgotten password flow |
+| Rate Limiting | planned | Configurable rate limiting (config struct exists, not yet wired) |
