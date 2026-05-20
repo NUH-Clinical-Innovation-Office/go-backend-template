@@ -48,12 +48,12 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 │   ├── middleware/   # HTTP middleware
 │   ├── observability/# OpenTelemetry setup
 │   ├── router/       # Router configuration
-│   └── todo/         # Todo feature (example CRUD)
+│   ├── todo/         # Todo feature (example CRUD)
+│   └── validator/    # Request validation
 ├── migrations/       # Database migrations
 ├── sql/
 │   └── queries/      # SQLC query definitions
-├── docs/             # Generated documentation
-├── code/             # Additional code samples
+├── docs/             # Documentation
 ├── docker-compose.yml
 ├── Dockerfile
 ├── Makefile
@@ -109,9 +109,16 @@ Copy `.env.example` to `.env` and configure:
 # Server
 SERVER_HOST=0.0.0.0
 SERVER_PORT=8080
+SERVER_READ_TIMEOUT=30s
+SERVER_WRITE_TIMEOUT=30s
+SERVER_IDLE_TIMEOUT=120s
+SERVER_SHUTDOWN_TIMEOUT=10s
 
 # Database
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/go_backend_template?sslmode=disable
+DATABASE_MAX_OPEN_CONNS=25
+DATABASE_MAX_IDLE_CONNS=5
+DATABASE_CONN_MAX_LIFETIME=5m
 
 # JWT
 JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
@@ -123,12 +130,20 @@ LOG_LEVEL=info
 LOG_FORMAT=json
 
 # OpenTelemetry
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318
+TRACING_ENABLED=true
 SERVICE_NAME=go-backend-template
+SERVICE_VERSION=1.0.0
+ENVIRONMENT=development
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+OTEL_TRACE_SAMPLING_RATIO=1.0
+OTEL_EXPORTER_OTLP_INSECURE=true
 
 # CORS
 CORS_ALLOWED_ORIGINS=*
 CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
+CORS_ALLOWED_HEADERS=Accept,Authorization,Content-Type
+CORS_ALLOW_CREDENTIALS=true
+CORS_MAX_AGE=3600
 ```
 
 ## API Endpoints
@@ -194,7 +209,7 @@ make fmt
 make vet
 
 # Generate SQLC code
-make generate
+make sqlc-gen
 
 # Build binaries
 make build
@@ -255,7 +270,7 @@ make migrate-version
 Queries are defined in `sql/queries/`. After modifying:
 
 ```bash
-make generate
+make sqlc-gen
 ```
 
 ## License
