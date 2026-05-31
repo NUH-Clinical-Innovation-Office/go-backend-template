@@ -1,72 +1,51 @@
 # Go Backend Template
 
+[![Go Version](https://img.shields.io/badge/Go-1.26%2B-blue)](https://golang.org/doc/go1.26)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+
 A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 
 ## Table of Contents
 
-- [Features](#features)
-- [Project Structure](#project-structure)
-- [Quick Start](#quick-start)
+- [Project Description](#project-description)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
 - [Configuration](#configuration)
-- [API Endpoints](#api-endpoints)
-- [Development](#development)
-- [Observability](#observability)
-- [Database](#database)
+- [Project Architecture](#project-architecture)
+- [Project Structure](#project-structure)
+- [Commands](#commands)
+- [Contributing](#contributing)
 - [License](#license)
+- [Documentation](#documentation)
 
-## Features
+## Project Description
 
-- **Chi Router**: Lightweight, idiomatic HTTP routing
-- **sqlc**: Type-safe SQL code generation
-- **PostgreSQL**: Primary database with pgx driver
-- **JWT Authentication**: Secure token-based auth with bcrypt password hashing
-- **Approved Users Gate**: Email whitelist for controlled registration
-- **OpenTelemetry**: Distributed tracing with Jaeger/OTLP support
-- **Zap Logging**: Structured, high-performance logging
-- **Database Migrations**: Using golang-migrate
-- **Docker Support**: Multi-stage builds and docker-compose
-- **CORS Middleware**: Cross-origin request handling with configurable origins
-- **Request ID Middleware**: Unique request ID per request for tracing
-- **Real IP Middleware**: Extracts real client IP from proxy headers
-- **Timeout Middleware**: 30-second request timeout protection
-- **Integration Tests**: testcontainers-go for real database testing
+A production-ready Go backend template implementing a REST API with JWT authentication, PostgreSQL database, and comprehensive observability. Designed for rapid project bootstrapping with industry best practices built in.
 
-## Project Structure
+| Feature | Description |
+|---------|-------------|
+| Chi Router | Lightweight, idiomatic HTTP routing |
+| sqlc | Type-safe SQL code generation |
+| PostgreSQL | Primary database with pgx driver |
+| JWT Authentication | Secure token-based auth with bcrypt password hashing |
+| Approved Users Gate | Email whitelist for controlled registration |
+| OpenTelemetry | Distributed tracing with Jaeger/OTLP support |
+| Zap Logging | Structured, high-performance logging |
+| Database Migrations | Using golang-migrate |
+| Docker Support | Multi-stage builds and docker-compose |
+| CORS Middleware | Cross-origin request handling with configurable origins |
+| Request ID Middleware | Unique request ID per request for tracing |
+| Real IP Middleware | Extracts real client IP from proxy headers |
+| Timeout Middleware | 30-second request timeout protection |
+| Integration Tests | testcontainers-go for real database testing |
 
-```
-.
-├── cmd/
-│   ├── api/          # API entry point
-│   └── migrate/      # Migration CLI tool
-├── internal/
-│   ├── auth/         # Authentication feature
-│   ├── config/       # Configuration loading
-│   ├── db/           # Database connection and SQLC generated code
-│   ├── domain/       # Shared domain models
-│   ├── http/         # HTTP utilities
-│   ├── logging/      # Logging setup
-│   ├── middleware/   # HTTP middleware
-│   ├── observability/# OpenTelemetry setup
-│   ├── router/       # Router configuration
-│   ├── todo/         # Todo feature (example CRUD)
-│   └── validator/    # Request validation
-├── migrations/       # Database migrations
-├── sql/
-│   └── queries/      # SQLC query definitions
-├── docs/             # Documentation
-├── docker-compose.yml
-├── Dockerfile
-├── Makefile
-└── sqlc.yaml
-```
-
-## Quick Start
-
-### Prerequisites
+## Prerequisites
 
 - Go 1.26+
 - PostgreSQL 16+
 - Docker and docker-compose (optional)
+
+## Installation
 
 ### Using Docker Compose (Recommended)
 
@@ -92,13 +71,6 @@ make migrate-up
 
 # Start the API
 make run
-```
-
-### Manual Docker Build
-
-```bash
-# Build and start
-docker-compose up --build
 ```
 
 ## Configuration
@@ -127,7 +99,7 @@ BCRYPT_COST=12
 
 # Logging
 LOG_LEVEL=info
-LOG_FORMAT=json
+LOG_FORMAT=console
 
 # OpenTelemetry
 TRACING_ENABLED=true
@@ -138,7 +110,11 @@ OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 OTEL_TRACE_SAMPLING_RATIO=1.0
 OTEL_EXPORTER_OTLP_INSECURE=true
 
-# CORS
+# Rate Limit Configuration (for future use)
+RATE_LIMIT_REQUESTS=10
+RATE_LIMIT_DURATION=1m
+
+# CORS Configuration
 CORS_ALLOWED_ORIGINS=*
 CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
 CORS_ALLOWED_HEADERS=Accept,Authorization,Content-Type
@@ -146,133 +122,127 @@ CORS_ALLOW_CREDENTIALS=true
 CORS_MAX_AGE=3600
 ```
 
-## API Endpoints
+## Project Architecture
 
-### Authentication
+The application follows a layered architecture:
 
-| Method | Endpoint                | Description       | Auth |
-| ------ | ----------------------- | ----------------- | ---- |
-| POST   | `/api/v1/auth/register` | Register new user | No   |
-| POST   | `/api/v1/auth/login`    | Login             | No   |
+```
+                    ┌─────────────────────────────────────┐
+                    │            Router (Chi)             │
+                    │  Middleware: CORS, Auth, Timeout   │
+                    └──────────────┬──────────────────────┘
+                                   │
+        ┌──────────────────────────┼──────────────────────────┐
+        │                          │                          │
+        ▼                          ▼                          ▼
+┌───────────────┐         ┌───────────────┐         ┌───────────────┐
+│  Auth Handler │         │ Todo Handler   │         │ Admin Handler  │
+└───────┬───────┘         └───────┬───────┘         └───────┬───────┘
+        │                          │                          │
+        ▼                          ▼                          ▼
+┌───────────────┐         ┌───────────────┐
+│   Auth Svc    │         │  Todo Svc     │
+└───────┬───────┘         └───────┬───────┘
+        │                          │
+        ▼                          ▼
+┌───────────────┐         ┌───────────────┐
+│  SQLC Queries │         │  SQLC Queries │
+└───────┬───────┘         └───────┬───────┘
+        │                          │
+        ▼                          ▼
+┌─────────────────────────────────────────────┐
+│              PostgreSQL Database             │
+└─────────────────────────────────────────────┘
+```
 
-### User (Authenticated)
+- **Router**: Chi mux with middleware chain for CORS, auth, request ID, real IP, timeout, and logging
+- **Handlers**: HTTP request handlers delegate to services
+- **Services**: Business logic layer
+- **SQLC**: Type-safe database queries generated from SQL
 
-| Method | Endpoint     | Description           | Auth     |
-| ------ | ------------ | --------------------- | -------- |
-| GET    | `/api/v1/me` | Get current user info | Required |
+## Project Structure
 
-### Todos (User-Scoped)
+```
+.
+├── cmd/
+│   ├── api/          # API entry point
+│   └── migrate/      # Migration CLI tool
+├── internal/
+│   ├── auth/         # Authentication feature
+│   ├── config/       # Configuration loading
+│   ├── db/           # Database connection and SQLC generated code
+│   ├── domain/       # Shared domain models
+│   ├── http/         # HTTP utilities
+│   ├── integration/  # Integration tests
+│   ├── logging/      # Logging setup
+│   ├── middleware/   # HTTP middleware
+│   ├── observability/# OpenTelemetry setup
+│   ├── router/       # Router configuration
+│   ├── todo/         # Todo feature (example CRUD)
+│   └── validator/    # Request validation
+├── migrations/       # Database migrations
+├── sql/
+│   └── queries/      # SQLC query definitions
+├── docs/             # Documentation
+├── docker-compose.yml
+├── Dockerfile
+├── Makefile
+└── sqlc.yaml
+```
 
-| Method | Endpoint             | Description    | Auth     |
-| ------ | -------------------- | -------------- | -------- |
-| GET    | `/api/v1/todos`      | List all todos | Required |
-| POST   | `/api/v1/todos`      | Create todo    | Required |
-| GET    | `/api/v1/todos/{id}` | Get todo by ID | Required |
-| PUT    | `/api/v1/todos/{id}` | Update todo    | Required |
-| DELETE | `/api/v1/todos/{id}` | Delete todo    | Required |
-
-### Admin (Approved Users Management)
-
-| Method | Endpoint                            | Description          | Auth  |
-| ------ | ----------------------------------- | -------------------- | ----- |
-| GET    | `/api/v1/admin/approved-users`      | List approved users  | Admin |
-| POST   | `/api/v1/admin/approved-users`      | Create approved user | Admin |
-| POST   | `/api/v1/admin/approved-users/bulk` | Bulk create          | Admin |
-| DELETE | `/api/v1/admin/approved-users/{id}` | Delete approved user | Admin |
-
-### Health
-
-| Method | Endpoint  | Description  | Auth |
-| ------ | --------- | ------------ | ---- |
-| GET    | `/health` | Health check | No   |
-| GET    | `/`       | API info     | No   |
-
-## Development
+## Commands
 
 ```bash
-# Run all tests (unit + integration)
-make test
+# Build
+make build          # Build the API binary
+make build-migrate  # Build the migration binary
 
-# Run unit tests only
-make test-unit
+# Run
+make run            # Run the API server
 
-# Run integration tests only (requires Docker)
-make test-integration
+# Test
+make test           # Run all tests (unit + integration via testcontainers)
+make test-unit      # Run unit tests only (excludes integration tests)
+make test-integration # Run integration tests only (requires Docker)
+make test-coverage  # Run tests with coverage report
 
-# Run linter
-make lint
+# Lint & Format
+make lint           # Run golangci-lint
+make fmt            # Format code
+make vet            # Run go vet
 
-# Format code
-make fmt
+# Database
+make migrate-up     # Run all pending migrations
+make migrate-down   # Rollback last migration
+make migrate-reset  # Reset database (down then up)
+make migrate-version # Show current migration version
 
-# Run go vet
-make vet
+# SQLC
+make sqlc-gen        # Generate sqlc code
+make sqlc-compile   # Validate sqlc schema/queries without generating
 
-# Generate SQLC code
-make sqlc-gen
+# Docker
+make docker-build   # Build Docker image
 
-# Build binaries
-make build
+# CI/CD
+make verify          # Run all verification steps (fmt, vet, lint, sqlc-compile, test)
+make ci             # Run full CI pipeline
 
-# Verify (fmt, vet, lint, sqlc-compile, test)
-make verify
-
-# Run full CI pipeline
-make ci
-
-# Clean artifacts
-make clean
+# Maintenance
+make tidy            # Tidy go modules
+make clean           # Clean build artifacts
+make install-tools   # Install required tools
 ```
 
-## Observability
+## Contributing
 
-### Tracing
-
-Traces are exported to Jaeger via OTLP. Access the UI at `http://localhost:16686`.
-
-### Logging
-
-Structured JSON logs (in production) with trace context:
-
-```json
-{
-  "level": "info",
-  "msg": "request completed",
-  "timestamp": "2024-01-01T00:00:00Z",
-  "trace_id": "abc123",
-  "span_id": "def456",
-  "method": "GET",
-  "path": "/api/v1/todos",
-  "status": 200
-}
-```
-
-## Database
-
-### Running Migrations
-
-```bash
-# Apply all migrations
-make migrate-up
-
-# Rollback one migration
-make migrate-down
-
-# Reset database
-make migrate-reset
-
-# Check version
-make migrate-version
-```
-
-### SQLC
-
-Queries are defined in `sql/queries/`. After modifying:
-
-```bash
-make sqlc-gen
-```
+See [docs/contributing/](docs/contributing/) for development guidelines.
 
 ## License
 
 MIT
+
+## Documentation
+
+- [Features](docs/features.md) — Feature inventory and status
+- [API Reference](docs/api.md) — API endpoint documentation
