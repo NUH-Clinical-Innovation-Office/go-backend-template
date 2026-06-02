@@ -29,7 +29,7 @@ A production-ready Go backend template implementing a REST API with JWT authenti
 | PostgreSQL | Primary database with pgx driver |
 | JWT Authentication | Secure token-based auth with bcrypt password hashing |
 | Approved Users Gate | Email whitelist for controlled registration |
-| OpenTelemetry | Distributed tracing with Jaeger/OTLP support |
+| OpenTelemetry | Distributed tracing with OTLP HTTP exporter |
 | Zap Logging | Structured, high-performance logging |
 | Database Migrations | Using golang-migrate |
 | Docker Support | Multi-stage builds and docker-compose |
@@ -135,34 +135,34 @@ The application follows a layered architecture:
                     │ RequestID, RealIP, Recoverer       │
                     └──────────────┬──────────────────────┘
                                    │
-        ┌──────────────────────────┼──────────────────────────┐
-        │                          │                          │
-        ▼                          ▼                          ▼
-┌──────────────────────┐  ┌───────────────┐  ┌──────────────────────┐
-│  Auth Handler        │  │ Todo Handler  │  │ Admin Handler        │
-│  /auth/* + /me       │  │  /todos/*     │  │  /admin/approved-    │
-│  + /admin/approved-  │  │               │  │  users/* (admin)     │
-│  users/* (admin)     │  │               │  │                      │
-└──────────┬───────────┘  └───────┬───────┘  └──────────┬───────────┘
-           │                       │                     │
-           ▼                       ▼                     ▼
-   ┌───────────────┐       ┌───────────────┐    (delegates to Auth Svc)
-   │   Auth Svc    │       │  Todo Svc     │
-   └───────┬───────┘       └───────┬───────┘
-           │                       │
-           ▼                       ▼
-   ┌───────────────┐       ┌───────────────┐
-   │  SQLC Queries │       │  SQLC Queries │
-   └───────┬───────┘       └───────┬───────┘
-           │                       │
-           ▼                       ▼
-┌─────────────────────────────────────────────┐
-│              PostgreSQL Database             │
-└─────────────────────────────────────────────┘
+              ┌────────────────────┴────────────────────┐
+              │                                         │
+              ▼                                         ▼
+   ┌──────────────────────┐                  ┌──────────────────────┐
+   │  Auth Handler        │                  │  Todo Handler        │
+   │  /auth/* + /me       │                  │  /todos/*            │
+   │  + /admin/approved-  │                  │  (user-scoped)       │
+   │  users/* (admin)     │                  │                      │
+   └──────────┬───────────┘                  └──────────┬───────────┘
+              │                                         │
+              ▼                                         ▼
+       ┌───────────────┐                         ┌───────────────┐
+       │   Auth Svc    │                         │  Todo Svc     │
+       └───────┬───────┘                         └───────┬───────┘
+               │                                         │
+               ▼                                         ▼
+       ┌───────────────┐                         ┌───────────────┐
+       │  SQLC Queries │                         │  SQLC Queries │
+       └───────┬───────┘                         └───────┬───────┘
+               │                                         │
+               ▼                                         ▼
+┌──────────────────────────────────────────────────────────────┐
+│                       PostgreSQL Database                    │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 - **Router**: Chi mux with middleware chain for request ID, real IP, logging, recovery, timeout, and CORS
-- **Handlers**: HTTP request handlers delegate to services; auth and admin endpoints share the same `auth.Handler` (admin is gated by the `RequireAdmin` middleware)
+- **Handlers**: HTTP request handlers delegate to services; auth and admin endpoints share the same `auth.Handler` (admin routes are gated by the `RequireAdmin` middleware)
 - **Services**: Business logic layer
 - **SQLC**: Type-safe database queries generated from SQL
 
@@ -218,10 +218,11 @@ make fmt            # Format code
 make vet            # Run go vet
 
 # Database
-make migrate-up     # Run all pending migrations
-make migrate-down   # Rollback last migration
-make migrate-reset  # Reset database (down then up)
+make migrate-up      # Run all pending migrations
+make migrate-down    # Rollback last migration
+make migrate-reset   # Reset database (down then up)
 make migrate-version # Show current migration version
+make migrate-force   # Force migration to a specific version (VERSION=<n>)
 
 # SQLC
 make sqlc-gen        # Generate sqlc code
