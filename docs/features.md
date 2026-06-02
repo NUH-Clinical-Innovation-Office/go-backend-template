@@ -9,7 +9,7 @@
 | PostgreSQL | stable | Primary database with pgx/v5 driver |
 | JWT Authentication | stable | Secure token-based auth with bcrypt password hashing |
 | Approved Users Gate | stable | Email whitelist for controlled user registration |
-| OpenTelemetry | stable | Distributed tracing with OTLP support |
+| OpenTelemetry | stable | Distributed tracing with OTLP HTTP support |
 | Zap Logging | stable | Structured, high-performance logging |
 | Database Migrations | stable | Using golang-migrate for schema management |
 | Docker Support | stable | Multi-stage builds and docker-compose |
@@ -17,6 +17,8 @@
 | Request ID Middleware | stable | Unique request ID per request for tracing |
 | Real IP Middleware | stable | Extracts real client IP from proxy headers |
 | Timeout Middleware | stable | 30-second request timeout |
+| Recoverer Middleware | stable | Chi panic recovery — converts panics to 500 responses |
+| Optional Auth Middleware | experimental | Attaches user to context when a valid token is present; wired in router but not yet bound to any route |
 | Integration Tests | stable | testcontainers-go for real database testing |
 
 ## API Features

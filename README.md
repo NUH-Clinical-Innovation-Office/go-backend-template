@@ -37,6 +37,8 @@ A production-ready Go backend template implementing a REST API with JWT authenti
 | Request ID Middleware | Unique request ID per request for tracing |
 | Real IP Middleware | Extracts real client IP from proxy headers |
 | Timeout Middleware | 30-second request timeout protection |
+| Recoverer Middleware | Chi panic recovery — converts panics to 500s |
+| Optional Auth Middleware | Attaches user to context if a valid token is present (wired but unused) |
 | Integration Tests | testcontainers-go for real database testing |
 
 ## Prerequisites
@@ -129,34 +131,38 @@ The application follows a layered architecture:
 ```
                     ┌─────────────────────────────────────┐
                     │            Router (Chi)             │
-                    │  Middleware: CORS, Auth, Timeout   │
+                    │ Middleware: CORS, Auth, Timeout,   │
+                    │ RequestID, RealIP, Recoverer       │
                     └──────────────┬──────────────────────┘
                                    │
         ┌──────────────────────────┼──────────────────────────┐
         │                          │                          │
         ▼                          ▼                          ▼
-┌───────────────┐         ┌───────────────┐         ┌───────────────┐
-│  Auth Handler │         │ Todo Handler   │         │ Admin Handler  │
-└───────┬───────┘         └───────┬───────┘         └───────┬───────┘
-        │                          │                          │
-        ▼                          ▼                          ▼
-┌───────────────┐         ┌───────────────┐
-│   Auth Svc    │         │  Todo Svc     │
-└───────┬───────┘         └───────┬───────┘
-        │                          │
-        ▼                          ▼
-┌───────────────┐         ┌───────────────┐
-│  SQLC Queries │         │  SQLC Queries │
-└───────┬───────┘         └───────┬───────┘
-        │                          │
-        ▼                          ▼
+┌──────────────────────┐  ┌───────────────┐  ┌──────────────────────┐
+│  Auth Handler        │  │ Todo Handler  │  │ Admin Handler        │
+│  /auth/* + /me       │  │  /todos/*     │  │  /admin/approved-    │
+│  + /admin/approved-  │  │               │  │  users/* (admin)     │
+│  users/* (admin)     │  │               │  │                      │
+└──────────┬───────────┘  └───────┬───────┘  └──────────┬───────────┘
+           │                       │                     │
+           ▼                       ▼                     ▼
+   ┌───────────────┐       ┌───────────────┐    (delegates to Auth Svc)
+   │   Auth Svc    │       │  Todo Svc     │
+   └───────┬───────┘       └───────┬───────┘
+           │                       │
+           ▼                       ▼
+   ┌───────────────┐       ┌───────────────┐
+   │  SQLC Queries │       │  SQLC Queries │
+   └───────┬───────┘       └───────┬───────┘
+           │                       │
+           ▼                       ▼
 ┌─────────────────────────────────────────────┐
 │              PostgreSQL Database             │
 └─────────────────────────────────────────────┘
 ```
 
-- **Router**: Chi mux with middleware chain for CORS, auth, request ID, real IP, timeout, and logging
-- **Handlers**: HTTP request handlers delegate to services
+- **Router**: Chi mux with middleware chain for request ID, real IP, logging, recovery, timeout, and CORS
+- **Handlers**: HTTP request handlers delegate to services; auth and admin endpoints share the same `auth.Handler` (admin is gated by the `RequireAdmin` middleware)
 - **Services**: Business logic layer
 - **SQLC**: Type-safe database queries generated from SQL
 
