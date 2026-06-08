@@ -18,6 +18,7 @@ type Config struct {
 	Observability ObservabilityConfig
 	RateLimit     RateLimitConfig
 	CORS          CORSConfig
+	Swagger       SwaggerConfig
 }
 
 // ServerConfig contains HTTP server settings
@@ -77,6 +78,11 @@ type CORSConfig struct {
 	MaxAge           int
 }
 
+// SwaggerConfig contains swagger UI settings
+type SwaggerConfig struct {
+	Enabled bool
+}
+
 // Load reads configuration from environment variables.
 func Load() (*Config, error) {
 	p := &envParser{}
@@ -124,6 +130,9 @@ func Load() (*Config, error) {
 			AllowedHeaders:   getCommaSeparatedEnv("CORS_ALLOWED_HEADERS", []string{"Accept", "Authorization", "Content-Type"}),
 			AllowCredentials: p.bool("CORS_ALLOW_CREDENTIALS", true),
 			MaxAge:           p.int("CORS_MAX_AGE", 3600),
+		},
+		Swagger: SwaggerConfig{
+			Enabled: p.bool("SWAGGER_ENABLED", false),
 		},
 	}
 

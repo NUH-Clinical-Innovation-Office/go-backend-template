@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoad(t *testing.T) {
@@ -165,4 +166,23 @@ func TestGetCommaSeparatedEnv(t *testing.T) {
 	os.Setenv("TEST_LIST_WITH_SPACES", " a , b , c ")
 	result = getCommaSeparatedEnv("TEST_LIST_WITH_SPACES", []string{})
 	assert.Equal(t, []string{"a", "b", "c"}, result)
+}
+
+func TestSwaggerConfig(t *testing.T) {
+	t.Run("defaults to disabled", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "postgres://x:x@localhost/x")
+		t.Setenv("JWT_SECRET_KEY", "secret")
+		cfg, err := Load()
+		require.NoError(t, err)
+		assert.False(t, cfg.Swagger.Enabled)
+	})
+
+	t.Run("enabled when SWAGGER_ENABLED=true", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "postgres://x:x@localhost/x")
+		t.Setenv("JWT_SECRET_KEY", "secret")
+		t.Setenv("SWAGGER_ENABLED", "true")
+		cfg, err := Load()
+		require.NoError(t, err)
+		assert.True(t, cfg.Swagger.Enabled)
+	})
 }
