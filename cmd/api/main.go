@@ -108,6 +108,7 @@ func run() error {
 		AuthHandler:   authHandler,
 		TodoHandler:   todoHandler,
 		CORS:          cfg.CORS,
+		RateLimit:     cfg.RateLimit,
 		CheckDBHealth: func() error { return pool.Ping(context.Background()) },
 	}
 	mux := router.New(&routerConfig)

@@ -28,6 +28,7 @@ type RouterConfig struct {
 	AuthHandler   *auth.Handler
 	TodoHandler   *todo.Handler
 	CORS          config.CORSConfig
+	RateLimit     config.RateLimitConfig
 	CheckDBHealth func() error
 }
 
@@ -43,6 +44,7 @@ func New(cfg *RouterConfig) *chi.Mux {
 		chimiddleware.Recoverer,
 		timeoutMiddleware(30*time.Second),
 		corsMiddleware(cfg.CORS),
+		rateLimitMiddleware(cfg.RateLimit),
 	)
 
 	// Public routes
@@ -264,4 +266,20 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// rateLimitMiddleware converts RateLimitConfig into a per-IP token-bucket
+// middleware. When rps <= 0 the middleware is a no-op so dev/test setups
+// can opt out without changing the router wiring.
+func rateLimitMiddleware(cfg config.RateLimitConfig) func(http.Handler) http.Handler {
+	if cfg.Requests <= 0 {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	ratePerSec := float64(cfg.Requests) / float64(cfg.Duration.Seconds())
+	if ratePerSec < 1 {
+		// For windows > 1s, treat the whole window as the bucket.
+		ratePerSec = 1
+	}
+	burst := cfg.Requests
+	return appmiddleware.RateLimit(int(ratePerSec), burst, 10*time.Minute)
 }
