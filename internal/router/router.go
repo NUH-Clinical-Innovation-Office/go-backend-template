@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/swaggo/swag"
 	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/logging"

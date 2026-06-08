@@ -18,6 +18,7 @@ import (
 	"github.com/your-org/go-backend-template/internal/observability"
 	"github.com/your-org/go-backend-template/internal/router"
 	"github.com/your-org/go-backend-template/internal/todo"
+	_ "github.com/swaggo/http-swagger"
 	"go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/zap"
 )
