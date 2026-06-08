@@ -30,7 +30,6 @@ func New(level, format string) (*zap.Logger, error) {
 	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 
 	logger, err := config.Build(
-		zap.AddCallerSkip(0),
 		zap.AddStacktrace(zapcore.ErrorLevel),
 	)
 	if err != nil {

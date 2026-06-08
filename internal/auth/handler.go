@@ -2,7 +2,6 @@
 package auth
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
@@ -15,6 +14,23 @@ import (
 	"github.com/your-org/go-backend-template/internal/validator"
 	"go.uber.org/zap"
 )
+
+// maxBodyBytes caps every JSON body the API accepts. 1 MiB is generous
+// for a CRUD service and prevents memory-exhaustion DoS from oversized
+// payloads.
+const maxBodyBytes int64 = 1 << 20
+
+func decodeJSONBody(w http.ResponseWriter, r *http.Request, dst any) error {
+	return http2.DecodeJSON(w, r, maxBodyBytes, dst)
+}
+
+func writeDecodeError(w http.ResponseWriter, err error) {
+	if errors.Is(err, http2.ErrBodyTooLarge) {
+		http2.RespondError(w, http.StatusRequestEntityTooLarge, "request body too large")
+		return
+	}
+	http2.RespondError(w, http.StatusBadRequest, "invalid request body")
+}
 
 // RegisterRequest represents a registration request
 type RegisterRequest struct {
@@ -47,14 +63,17 @@ type UserResponse struct {
 
 // Handler holds auth dependencies
 type Handler struct {
-	svc    AuthService
-	logger *zap.Logger
+	auth    AuthService
+	admin   ApprovedUserAdminService
+	logger  *zap.Logger
 }
 
-// NewHandler creates a new auth handler
-func NewHandler(svc AuthService, logger *zap.Logger) *Handler {
+// NewHandler creates a new auth handler. The auth and admin surfaces are
+// injected separately so callers can narrow what they pass in.
+func NewHandler(auth AuthService, admin ApprovedUserAdminService, logger *zap.Logger) *Handler {
 	return &Handler{
-		svc:    svc,
+		auth:   auth,
+		admin:  admin,
 		logger: logger,
 	}
 }
@@ -62,8 +81,8 @@ func NewHandler(svc AuthService, logger *zap.Logger) *Handler {
 // RegisterHandler handles user registration
 func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeDecodeError(w, err)
 		return
 	}
 
@@ -77,7 +96,7 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.svc.Register(r.Context(), req.Email, req.Password, req.ApprovedID)
+	token, err := h.auth.Register(r.Context(), req.Email, req.Password, req.ApprovedID)
 	if err != nil {
 		h.logger.Error("register failed", zap.Error(err))
 		if errors.Is(err, ErrUserNotFound) {
@@ -88,7 +107,7 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 			http2.RespondError(w, http.StatusBadRequest, "invalid approved_id format")
 			return
 		}
-		if err.Error() == "user already exists" {
+		if errors.Is(err, ErrUserAlreadyExists) {
 			http2.RespondError(w, http.StatusConflict, "user already exists")
 			return
 		}
@@ -105,8 +124,8 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 // LoginHandler handles user login
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeDecodeError(w, err)
 		return
 	}
 
@@ -119,7 +138,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.svc.Login(r.Context(), req.Email, req.Password)
+	token, err := h.auth.Login(r.Context(), req.Email, req.Password)
 	if err != nil {
 		h.logger.Error("login failed", zap.Error(err))
 		if errors.Is(err, ErrInvalidCredentials) {
@@ -209,7 +228,7 @@ func toApprovedUserResponses(aus []*domain.ApprovedUser) []*ApprovedUserResponse
 
 // ListApprovedUsersHandler handles GET /admin/approved-users
 func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
-	users, err := h.svc.ListApprovedUsers(r.Context())
+	users, err := h.admin.ListApprovedUsers(r.Context())
 	if err != nil {
 		h.logger.Error("list approved users failed", zap.Error(err))
 		http2.RespondError(w, http.StatusInternalServerError, "internal server error")
@@ -222,8 +241,8 @@ func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Reques
 // CreateApprovedUserHandler handles POST /admin/approved-users
 func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req ApprovedUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeDecodeError(w, err)
 		return
 	}
 
@@ -243,10 +262,10 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	approvedUser, err := h.svc.CreateApprovedUser(r.Context(), req.Email, req.FirstName, creator.ApprovedUserID)
+	approvedUser, err := h.admin.CreateApprovedUser(r.Context(), req.Email, req.FirstName, creator.ApprovedUserID)
 	if err != nil {
 		h.logger.Error("create approved user failed", zap.Error(err))
-		if err.Error() == "email already in approved list" {
+		if errors.Is(err, ErrApprovedEmailExists) {
 			http2.RespondError(w, http.StatusConflict, "Email already in approved list")
 			return
 		}
@@ -260,8 +279,8 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 // BulkCreateApprovedUsersHandler handles POST /admin/approved-users/bulk
 func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var req BulkApprovedUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid request body")
+	if err := decodeJSONBody(w, r, &req); err != nil {
+		writeDecodeError(w, err)
 		return
 	}
 
@@ -284,7 +303,7 @@ func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.
 		firstNames[i] = u.FirstName
 	}
 
-	users, err := h.svc.BulkCreateApprovedUsers(r.Context(), emails, firstNames, creator.ID)
+	users, err := h.admin.BulkCreateApprovedUsers(r.Context(), emails, firstNames, creator.ApprovedUserID)
 	if err != nil {
 		h.logger.Error("bulk create approved users failed", zap.Error(err))
 		http2.RespondError(w, http.StatusInternalServerError, "internal server error")
@@ -308,7 +327,7 @@ func (h *Handler) DeleteApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if err := h.svc.DeleteApprovedUser(r.Context(), id); err != nil {
+	if err := h.admin.DeleteApprovedUser(r.Context(), id); err != nil {
 		h.logger.Error("delete approved user failed", zap.Error(err))
 		http2.RespondError(w, http.StatusInternalServerError, "internal server error")
 		return

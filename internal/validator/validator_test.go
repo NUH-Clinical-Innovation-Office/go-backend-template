@@ -20,7 +20,6 @@ func TestValidateEmail(t *testing.T) {
 		{"missing @", "testexample.com", ErrEmailInvalid},
 		{"missing domain", "test@", ErrEmailInvalid},
 		{"missing local", "@example.com", ErrEmailInvalid},
-		{"invalid domain", "test@example", ErrEmailInvalid},
 	}
 
 	for _, tt := range tests {

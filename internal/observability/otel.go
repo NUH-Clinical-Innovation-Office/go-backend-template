@@ -16,8 +16,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// Setup initializes OpenTelemetry for distributed tracing
-func Setup(ctx context.Context, serviceName string, logger *zap.Logger) (*sdktrace.TracerProvider, error) {
+// Setup initializes OpenTelemetry for distributed tracing.
+// insecure controls whether the OTLP exporter uses plaintext (http) or TLS (https).
+func Setup(ctx context.Context, serviceName string, insecure bool, logger *zap.Logger) (*sdktrace.TracerProvider, error) {
 	res, err := resource.New(ctx,
 		resource.WithFromEnv(),
 		resource.WithProcess(),
@@ -51,6 +52,9 @@ func Setup(ctx context.Context, serviceName string, logger *zap.Logger) (*sdktra
 			MaxInterval:     30 * time.Second,
 			MaxElapsedTime:  5 * time.Minute,
 		}),
+	}
+	if insecure {
+		exporterOptions = append(exporterOptions, otlptracehttp.WithInsecure())
 	}
 
 	if endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"); endpoint != "" {

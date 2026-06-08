@@ -68,13 +68,15 @@ func TestUserFromContext(t *testing.T) {
 func TestRequestIDFromContext(t *testing.T) {
 	// Test with request ID in context
 	ctx := context.WithValue(context.Background(), RequestIDKey, "test-request-id")
-	result := RequestIDFromContext(ctx)
-	assert.Equal(t, "test-request-id", result)
+	id, ok := RequestIDFromContext(ctx)
+	assert.True(t, ok)
+	assert.Equal(t, "test-request-id", id)
 
 	// Test without request ID in context
 	ctx = context.Background()
-	result = RequestIDFromContext(ctx)
-	assert.Empty(t, result)
+	id, ok = RequestIDFromContext(ctx)
+	assert.False(t, ok)
+	assert.Empty(t, id)
 }
 
 func TestClientIPFromContext(t *testing.T) {
@@ -124,43 +126,6 @@ func TestRequireAuth(t *testing.T) {
 
 	wrappedHandler.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
-}
-
-func TestOptionalAuth(t *testing.T) {
-	mockAuthProvider := &mockAuthProvider{
-		user: &domain.User{ID: uuid.New(), IsActive: true},
-		err:  nil,
-	}
-
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		user := UserFromContext(r.Context())
-		if user != nil {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("authenticated"))
-		} else {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("anonymous"))
-		}
-	})
-
-	wrappedHandler := OptionalAuth(mockAuthProvider)(handler)
-
-	// Test with valid token
-	req := httptest.NewRequest("GET", "/", nil)
-	req.Header.Set("Authorization", "Bearer valid-token")
-	w := httptest.NewRecorder()
-
-	wrappedHandler.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "authenticated", w.Body.String())
-
-	// Test without token
-	req = httptest.NewRequest("GET", "/", nil)
-	w = httptest.NewRecorder()
-
-	wrappedHandler.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "anonymous", w.Body.String())
 }
 
 func TestRequireAdmin(t *testing.T) {

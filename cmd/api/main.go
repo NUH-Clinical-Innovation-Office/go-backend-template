@@ -53,6 +53,7 @@ func run() error {
 	tracerProvider, err := observability.Setup(
 		context.Background(),
 		cfg.Observability.ServiceName,
+		cfg.Observability.OTLPInsecure,
 		logger,
 	)
 	if err != nil {
@@ -85,7 +86,7 @@ func run() error {
 	// Initialize auth repository and service
 	authRepo := auth.NewRepository(queries)
 	authService := auth.NewService(authRepo, cfg.Auth.JWTSecretKey, time.Duration(cfg.Auth.JWTExpireMinutes)*time.Minute, cfg.Auth.BcryptCost)
-	authHandler := auth.NewHandler(authService, logger)
+	authHandler := auth.NewHandler(authService, authService, logger)
 
 	// Initialize todo repository and service
 	todoRepo := todo.NewRepository(queries)
@@ -106,7 +107,7 @@ func run() error {
 		TodoService:   todoService,
 		AuthHandler:   authHandler,
 		TodoHandler:   todoHandler,
-		CORSOrigins:   cfg.CORS.AllowedOrigins,
+		CORS:          cfg.CORS,
 		CheckDBHealth: func() error { return pool.Ping(context.Background()) },
 	}
 	mux := router.New(&routerConfig)

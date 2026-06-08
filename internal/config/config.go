@@ -33,8 +33,8 @@ type ServerConfig struct {
 // DatabaseConfig contains database connection settings
 type DatabaseConfig struct {
 	URL             string
-	MaxOpenConns    int
-	MaxIdleConns    int
+	MaxConns        int32
+	MinConns        int32
 	ConnMaxLifetime time.Duration
 }
 
@@ -42,7 +42,6 @@ type DatabaseConfig struct {
 type AuthConfig struct {
 	JWTSecretKey     string
 	JWTExpireMinutes int
-	Algorithm        string
 	BcryptCost       int
 }
 
@@ -93,14 +92,13 @@ func Load() (*Config, error) {
 		},
 		Database: DatabaseConfig{
 			URL:             getEnv("DATABASE_URL", ""),
-			MaxOpenConns:    p.int("DATABASE_MAX_OPEN_CONNS", 25),
-			MaxIdleConns:    p.int("DATABASE_MAX_IDLE_CONNS", 5),
+			MaxConns:        int32(p.int("DATABASE_MAX_CONNS", 25)),
+			MinConns:        int32(p.int("DATABASE_MIN_CONNS", 2)),
 			ConnMaxLifetime: p.duration("DATABASE_CONN_MAX_LIFETIME", 5*time.Minute),
 		},
 		Auth: AuthConfig{
 			JWTSecretKey:     getEnv("JWT_SECRET_KEY", ""),
 			JWTExpireMinutes: p.int("JWT_EXPIRE_MINUTES", 1440),
-			Algorithm:        "HS256",
 			BcryptCost:       p.int("BCRYPT_COST", 12),
 		},
 		Logging: LoggingConfig{

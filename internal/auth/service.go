@@ -13,11 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrUserNotFound       = errors.New("user not found")
-)
-
 // Service provides authentication business logic
 type Service struct {
 	repo       UserRepository
@@ -53,7 +48,7 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 	// Check if user already exists
 	existingUser, err := s.repo.GetUserByEmail(ctx, email)
 	if err == nil && existingUser != nil {
-		return "", errors.New("user already exists")
+		return "", ErrUserAlreadyExists
 	}
 
 	// Hash password with configurable cost
@@ -104,22 +99,20 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 		return "", ErrInvalidCredentials
 	}
 
+	// Deactivated users cannot log in. Surface as ErrInvalidCredentials to
+	// avoid leaking account state to the caller.
+	if !user.IsActive {
+		return "", ErrInvalidCredentials
+	}
+
 	// Check password
 	if cmpErr := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); cmpErr != nil {
 		return "", ErrInvalidCredentials
 	}
 
-	// Get user roles - ignore error, roles are optional
-	_, getRolesErr := s.repo.GetUserRoles(ctx, pgtypeToUuid(user.ID))
-	_ = getRolesErr
-
-	// Get approved user - not used in login response, ignore error
-	_, getApprovedErr := s.repo.GetApprovedUserByID(ctx, pgtypeToUuid(user.ApprovedUserID))
-	_ = getApprovedErr
-
 	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID.Bytes,
+		"user_id": user.ID.String(),
 		"email":   user.Email,
 		"exp":     time.Now().Add(s.jwtExpiry).Unix(),
 	})
@@ -135,12 +128,15 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 // GetUserFromToken validates a JWT token and returns the user
 func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*domain.User, error) {
 	// Parse token
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrInvalidCredentials
 		}
 		return s.jwtSecret, nil
-	})
+	},
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
+		jwt.WithExpirationRequired(),
+	)
 
 	if err != nil {
 		return nil, ErrInvalidCredentials
@@ -165,6 +161,12 @@ func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*do
 	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, ErrUserNotFound
+	}
+
+	// Deactivated users keep their JWT valid until expiry otherwise.
+	// Treat as invalid credentials without leaking account state.
+	if !user.IsActive {
+		return nil, ErrInvalidCredentials
 	}
 
 	// Get user roles
@@ -192,7 +194,7 @@ func (s *Service) CreateApprovedUser(ctx context.Context, email, firstName strin
 	// Check if email already exists
 	existing, err := s.repo.GetApprovedUserByEmail(ctx, email)
 	if err == nil && existing != nil {
-		return nil, errors.New("email already in approved list")
+		return nil, ErrApprovedEmailExists
 	}
 
 	return s.repo.CreateApprovedUser(ctx, email, firstName, createdBy)

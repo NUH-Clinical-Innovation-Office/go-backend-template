@@ -21,7 +21,8 @@ func New(ctx context.Context, cfg config.DatabaseConfig) (*Pool, error) {
 		return nil, fmt.Errorf("parse db config: %w", err)
 	}
 
-	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	poolConfig.MaxConns = cfg.MaxConns
+	poolConfig.MinConns = cfg.MinConns
 	poolConfig.MaxConnLifetime = cfg.ConnMaxLifetime
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)

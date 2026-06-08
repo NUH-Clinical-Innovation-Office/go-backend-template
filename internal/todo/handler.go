@@ -99,10 +99,12 @@ func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 
 	var dueDate *time.Time
 	if req.DueDate != nil && *req.DueDate != "" {
-		t, err := time.Parse(time.RFC3339, *req.DueDate)
-		if err == nil {
-			dueDate = &t
+		t, parseErr := time.Parse(time.RFC3339, *req.DueDate)
+		if parseErr != nil {
+			http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
+			return
 		}
+		dueDate = &t
 	}
 
 	todo, err := h.svc.Create(r.Context(), user.ID, req.Title, req.Description, dueDate)
@@ -184,9 +186,11 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	var dueDate *time.Time
 	if req.DueDate != nil && *req.DueDate != "" {
 		t, parseErr := time.Parse(time.RFC3339, *req.DueDate)
-		if parseErr == nil {
-			dueDate = &t
+		if parseErr != nil {
+			http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
+			return
 		}
+		dueDate = &t
 	}
 
 	todo, err := h.svc.Update(r.Context(), id, user.ID, req.Title, req.Description, req.IsCompleted, dueDate)

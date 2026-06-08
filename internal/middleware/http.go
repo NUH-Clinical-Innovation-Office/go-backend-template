@@ -3,11 +3,13 @@ package middleware
 
 import (
 	"context"
-	"net/http"
-	"strings"
-
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"net"
+	"net/http"
+	"strings"
+	"time"
 
 	"github.com/your-org/go-backend-template/internal/domain"
 	http2 "github.com/your-org/go-backend-template/internal/http"
@@ -21,27 +23,33 @@ const (
 	ClientIPKey    contextKey = "client_ip"
 )
 
-// GenerateRequestID generates a unique request ID
+// GenerateRequestID returns a hex-encoded 128-bit random ID.
+// On the (essentially impossible) failure of crypto/rand we fall back
+// to a time-derived ID so the request is still observable in logs.
 func GenerateRequestID() string {
 	b := make([]byte, 16)
 	if _, err := rand.Read(b); err == nil {
 		return hex.EncodeToString(b)
 	}
-	// Fallback if crypto/rand fails
-	return "unknown-request-id"
+	return fmt.Sprintf("%016x", time.Now().UnixNano())
 }
 
-// GetRealIP extracts the real client IP from headers
+// GetRealIP extracts the real client IP from X-Forwarded-For, X-Real-IP,
+// or RemoteAddr. Port is stripped from RemoteAddr for consistency with
+// the proxy-header paths which contain only the host.
 func GetRealIP(r *http.Request) string {
 	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
-		// X-Forwarded-For may contain multiple IPs, take the first one
 		parts := strings.Split(ip, ",")
 		return strings.TrimSpace(parts[0])
 	}
 	if ip := r.Header.Get("X-Real-IP"); ip != "" {
 		return ip
 	}
-	return r.RemoteAddr
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return host
 }
 
 // AuthProvider defines the interface for auth service operations
@@ -91,28 +99,6 @@ func RequireAdmin(authSvc AuthProvider) func(http.Handler) http.Handler {
 	}
 }
 
-// OptionalAuth extracts Bearer token if present but doesn't reject missing tokens
-func OptionalAuth(authSvc AuthProvider) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			token := extractBearerToken(r)
-			if token == "" {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			user, err := authSvc.GetUserFromToken(r.Context(), token)
-			if err != nil || user == nil {
-				next.ServeHTTP(w, r)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), CurrentUserKey, user)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-
 // UserFromContext retrieves the current user from context
 func UserFromContext(ctx context.Context) *domain.User {
 	u, ok := ctx.Value(CurrentUserKey).(*domain.User)
@@ -122,13 +108,12 @@ func UserFromContext(ctx context.Context) *domain.User {
 	return u
 }
 
-// RequestIDFromContext retrieves the request ID from context
-func RequestIDFromContext(ctx context.Context) string {
+// RequestIDFromContext retrieves the request ID from context. The boolean
+// is false if the context has no request ID (so callers can distinguish
+// "no id" from "empty id").
+func RequestIDFromContext(ctx context.Context) (string, bool) {
 	id, ok := ctx.Value(RequestIDKey).(string)
-	if !ok {
-		return ""
-	}
-	return id
+	return id, ok
 }
 
 // ClientIPFromContext retrieves the client IP from context

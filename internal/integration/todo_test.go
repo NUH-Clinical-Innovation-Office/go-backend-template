@@ -107,7 +107,7 @@ func TestTodoCRUD(t *testing.T) {
 
 		r.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusCreated, w.Code) // Invalid date is ignored, todo created
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 
 	t.Run("list todos", func(t *testing.T) {

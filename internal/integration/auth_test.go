@@ -483,9 +483,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 
 		r.ServeHTTP(w, req)
 
-		// Handler returns 500 when bulk create fails (e.g., duplicate emails in seed data)
-		// Test just verifies endpoint is wired correctly
-		assert.True(t, w.Code == http.StatusCreated || w.Code == http.StatusInternalServerError)
+		assert.Equal(t, http.StatusCreated, w.Code)
 	})
 
 	t.Run("bulk create with empty array", func(t *testing.T) {

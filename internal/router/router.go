@@ -4,11 +4,14 @@ package router
 import (
 	"context"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/your-org/go-backend-template/internal/auth"
+	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/logging"
 	appmiddleware "github.com/your-org/go-backend-template/internal/middleware"
 	"github.com/your-org/go-backend-template/internal/todo"
@@ -24,7 +27,7 @@ type RouterConfig struct {
 	TodoService   todo.TodoService
 	AuthHandler   *auth.Handler
 	TodoHandler   *todo.Handler
-	CORSOrigins   []string
+	CORS          config.CORSConfig
 	CheckDBHealth func() error
 }
 
@@ -39,7 +42,7 @@ func New(cfg *RouterConfig) *chi.Mux {
 		loggerMiddleware(cfg.Logger),
 		chimiddleware.Recoverer,
 		timeoutMiddleware(30*time.Second),
-		corsMiddleware(cfg.CORSOrigins),
+		corsMiddleware(cfg.CORS),
 	)
 
 	// Public routes
@@ -51,12 +54,6 @@ func New(cfg *RouterConfig) *chi.Mux {
 		// Public endpoints
 		r.Post("/auth/register", cfg.AuthHandler.RegisterHandler)
 		r.Post("/auth/login", cfg.AuthHandler.LoginHandler)
-
-		// Optional auth endpoints
-		r.Group(func(r chi.Router) {
-			r.Use(appmiddleware.OptionalAuth(cfg.AuthSvc))
-			// Routes that work differently for authenticated users
-		})
 
 		// Protected endpoints (require authentication)
 		r.Group(func(r chi.Router) {
@@ -81,10 +78,10 @@ func New(cfg *RouterConfig) *chi.Mux {
 
 			// Approved users management
 			r.Route("/admin/approved-users", func(r chi.Router) {
-				r.Get("/", listApprovedUsersHandler(cfg.AuthHandler))
-				r.Post("/", createApprovedUserHandler(cfg.AuthHandler))
-				r.Post("/bulk", bulkCreateApprovedUsersHandler(cfg.AuthHandler))
-				r.Delete("/{id}", deleteApprovedUserHandler(cfg.AuthHandler))
+				r.Get("/", cfg.AuthHandler.ListApprovedUsersHandler)
+				r.Post("/", cfg.AuthHandler.CreateApprovedUserHandler)
+				r.Post("/bulk", cfg.AuthHandler.BulkCreateApprovedUsersHandler)
+				r.Delete("/{id}", cfg.AuthHandler.DeleteApprovedUserHandler)
 			})
 		})
 	})
@@ -177,8 +174,9 @@ func loggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(wrapped, r)
 
-			// Log request completion
-			logger.Debug("request completed",
+			// Log request completion (same logger instance as start so trace
+			// context stays consistent across the request lifecycle)
+			log.Debug("request completed",
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
 				zap.Int("status", wrapped.status),
@@ -199,20 +197,39 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 	}
 }
 
-// corsMiddleware handles Cross-Origin Resource Sharing with configurable origins
-func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
+// corsMiddleware handles Cross-Origin Resource Sharing with configurable options.
+// When an origin is in the allow list, it is echoed back. Otherwise "*" is set
+// without credentials. Methods, headers, and max-age are read from the supplied
+// CORSConfig so operators can tune them per environment.
+func corsMiddleware(corsCfg config.CORSConfig) func(http.Handler) http.Handler {
+	methods := strings.Join(corsCfg.AllowedMethods, ", ")
+	headers := strings.Join(corsCfg.AllowedHeaders, ", ")
+	if methods == "" {
+		methods = "GET, POST, PUT, DELETE, OPTIONS"
+	}
+	if headers == "" {
+		headers = "Accept, Authorization, Content-Type"
+	}
+	maxAge := corsCfg.MaxAge
+	if maxAge == 0 {
+		maxAge = 3600
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			origin := r.Header.Get("Origin")
-			if isValidOrigin(origin, allowedOrigins) {
+			valid := isValidOrigin(origin, corsCfg.AllowedOrigins)
+			if valid {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
-				w.Header().Set("Access-Control-Allow-Credentials", "true")
+				if corsCfg.AllowCredentials {
+					w.Header().Set("Access-Control-Allow-Credentials", "true")
+				}
 			} else {
 				w.Header().Set("Access-Control-Allow-Origin", "*")
 			}
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-Request-ID")
-			w.Header().Set("Access-Control-Max-Age", "3600")
+			w.Header().Set("Access-Control-Allow-Methods", methods)
+			w.Header().Set("Access-Control-Allow-Headers", headers)
+			w.Header().Set("Access-Control-Max-Age", strconv.Itoa(maxAge))
 
 			if r.Method == http.MethodOptions {
 				w.WriteHeader(http.StatusNoContent)
@@ -224,7 +241,8 @@ func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 	}
 }
 
-// isValidOrigin checks if the origin is in the allowed list
+// isValidOrigin checks if the origin is in the allowed list. The "*" entry
+// matches any origin; otherwise exact match is required.
 func isValidOrigin(origin string, allowedOrigins []string) bool {
 	if origin == "" {
 		return false
@@ -246,21 +264,4 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.status = code
 	rw.ResponseWriter.WriteHeader(code)
-}
-
-// Admin handlers - delegate to auth.Handler
-func listApprovedUsersHandler(authHandler *auth.Handler) http.HandlerFunc {
-	return authHandler.ListApprovedUsersHandler
-}
-
-func createApprovedUserHandler(authHandler *auth.Handler) http.HandlerFunc {
-	return authHandler.CreateApprovedUserHandler
-}
-
-func bulkCreateApprovedUsersHandler(authHandler *auth.Handler) http.HandlerFunc {
-	return authHandler.BulkCreateApprovedUsersHandler
-}
-
-func deleteApprovedUserHandler(authHandler *auth.Handler) http.HandlerFunc {
-	return authHandler.DeleteApprovedUserHandler
 }

@@ -4,7 +4,6 @@ package validator
 import (
 	"errors"
 	"net/mail"
-	"regexp"
 	"strings"
 	"unicode"
 )
@@ -14,6 +13,7 @@ var (
 	ErrEmailInvalid      = errors.New("invalid email format")
 	ErrPasswordRequired  = errors.New("password is required")
 	ErrPasswordTooShort  = errors.New("password must be at least 8 characters")
+	ErrPasswordTooLong   = errors.New("password must be at most 72 characters")
 	ErrPasswordNoUpper   = errors.New("password must contain at least one uppercase letter")
 	ErrPasswordNoLower   = errors.New("password must contain at least one lowercase letter")
 	ErrPasswordNoDigit   = errors.New("password must contain at least one digit")
@@ -22,9 +22,6 @@ var (
 	ErrFirstNameRequired = errors.New("first name is required")
 	ErrFirstNameInvalid  = errors.New("first name contains invalid characters")
 )
-
-// emailRegex validates email format
-var emailRegex = regexp.MustCompile(`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`)
 
 // Validator interface for request validation
 type Validator interface {
@@ -101,7 +98,8 @@ func (v *ApprovedUserRequestValidator) Validate() error {
 	return nil
 }
 
-// ValidateEmail checks email format
+// ValidateEmail checks email format. Uses net/mail.ParseAddress which
+// handles the RFC 5322 grammar; no second regex check is required.
 func ValidateEmail(email string) error {
 	email = strings.TrimSpace(email)
 	if email == "" {
@@ -110,19 +108,21 @@ func ValidateEmail(email string) error {
 	if _, err := mail.ParseAddress(email); err != nil {
 		return ErrEmailInvalid
 	}
-	if !emailRegex.MatchString(email) {
-		return ErrEmailInvalid
-	}
 	return nil
 }
 
-// ValidatePassword checks password strength
+// ValidatePassword checks password strength. The upper bound is 72 bytes
+// which is bcrypt's silent-truncation ceiling; we reject longer input
+// so the operator can return 400 instead of hashing a different value.
 func ValidatePassword(password string) error {
 	if password == "" {
 		return ErrPasswordRequired
 	}
 	if len(password) < 8 {
 		return ErrPasswordTooShort
+	}
+	if len(password) > 72 {
+		return ErrPasswordTooLong
 	}
 
 	var hasUpper, hasLower, hasDigit bool

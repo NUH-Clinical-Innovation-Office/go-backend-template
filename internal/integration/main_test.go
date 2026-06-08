@@ -161,7 +161,7 @@ func setupTestDeps(t *testing.T) (*db.Pool, *dbSQLC.Queries, *auth.Service, *aut
 
 	authRepo := auth.NewRepository(queries)
 	authService := auth.NewService(authRepo, testConfig.Auth.JWTSecretKey, time.Duration(testConfig.Auth.JWTExpireMinutes)*time.Minute, 4)
-	authHandler := auth.NewHandler(authService, logger)
+	authHandler := auth.NewHandler(authService, authService, logger)
 
 	todoRepo := todo.NewRepository(queries)
 	todoService := todo.NewService(todoRepo)
