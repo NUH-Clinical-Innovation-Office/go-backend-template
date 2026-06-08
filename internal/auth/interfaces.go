@@ -15,6 +15,7 @@ type UserRepository interface {
 	GetUserByEmail(ctx context.Context, email string) (*UserRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (*UserRow, error)
 	CreateUser(ctx context.Context, in UserCreateInput) (*UserRow, error)
+	ApprovedUserExists(ctx context.Context, id uuid.UUID) (bool, error)
 	GetApprovedUserByID(ctx context.Context, id uuid.UUID) (*ApprovedUserRow, error)
 	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleRow, error)
 	GetRoleByName(ctx context.Context, name string) (*RoleRow, error)

@@ -18,6 +18,7 @@ import (
 type mockUserRepository struct {
 	getUserByEmail      func(ctx context.Context, email string) (*UserRow, error)
 	getUserByID         func(ctx context.Context, id uuid.UUID) (*UserRow, error)
+	approvedUserExists  func(ctx context.Context, id uuid.UUID) (bool, error)
 	getApprovedByID     func(ctx context.Context, id uuid.UUID) (*ApprovedUserRow, error)
 	getRolesByName      func(ctx context.Context, name string) (*RoleRow, error)
 	assignRole          func(ctx context.Context, userID, roleID uuid.UUID) error
@@ -52,6 +53,12 @@ func (m *mockUserRepository) GetApprovedUserByID(ctx context.Context, id uuid.UU
 		return nil, assert.AnError
 	}
 	return m.getApprovedByID(ctx, id)
+}
+func (m *mockUserRepository) ApprovedUserExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	if m.approvedUserExists == nil {
+		return false, assert.AnError
+	}
+	return m.approvedUserExists(ctx, id)
 }
 func (m *mockUserRepository) GetUserRoles(_ context.Context, _ uuid.UUID) ([]RoleRow, error) {
 	return nil, nil
@@ -214,8 +221,8 @@ func TestService_GetUserFromToken_InactiveUserRejected(t *testing.T) {
 func TestService_Register_DuplicateUser(t *testing.T) {
 	approvedID := uuid.New()
 	repo := &mockUserRepository{
-		getApprovedByID: func(_ context.Context, id uuid.UUID) (*ApprovedUserRow, error) {
-			return &ApprovedUserRow{ID: id, Email: "approved@example.com", FirstName: "App"}, nil
+		approvedUserExists: func(_ context.Context, _ uuid.UUID) (bool, error) {
+			return true, nil
 		},
 		getUserByEmail: func(_ context.Context, _ string) (*UserRow, error) {
 			return &UserRow{ID: uuid.New(), IsActive: true}, nil
@@ -225,6 +232,19 @@ func TestService_Register_DuplicateUser(t *testing.T) {
 
 	_, err := svc.Register(context.Background(), "dup@example.com", "Password123", approvedID.String())
 	assert.ErrorIs(t, err, ErrUserAlreadyExists)
+}
+
+func TestService_Register_ApprovedUserMissing(t *testing.T) {
+	approvedID := uuid.New()
+	repo := &mockUserRepository{
+		approvedUserExists: func(_ context.Context, _ uuid.UUID) (bool, error) {
+			return false, nil
+		},
+	}
+	svc := newTestService(t, repo)
+
+	_, err := svc.Register(context.Background(), "new@example.com", "Password123", approvedID.String())
+	assert.ErrorIs(t, err, ErrUserNotFound)
 }
 
 func TestService_CreateApprovedUser_DuplicateEmail(t *testing.T) {

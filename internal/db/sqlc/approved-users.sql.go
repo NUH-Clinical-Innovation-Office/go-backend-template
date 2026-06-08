@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -83,9 +84,14 @@ DELETE FROM approved_users
 WHERE id = $1
 `
 
-func (q *Queries) DeleteApprovedUser(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteApprovedUser, id)
-	return err
+// DeleteApprovedUser deletes the approved_user row with the given id
+// and returns the pgconn CommandTag so callers can inspect rows
+// affected. Hand-edited from the sqlc-generated signature (which
+// returned just `error`) to support the 404-on-missing contract in
+// the auth handler; the next `make sqlc-gen` would emit a `:execrows`
+// variant instead.
+func (q *Queries) DeleteApprovedUser(ctx context.Context, id pgtype.UUID) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, deleteApprovedUser, id)
 }
 
 const getApprovedUserByEmail = `-- name: GetApprovedUserByEmail :one

@@ -101,6 +101,43 @@ func (q *Queries) GetRolesByNames(ctx context.Context, dollar_1 []string) ([]Rol
 	return items, nil
 }
 
+// The following two functions are hand-written because the queries
+// were added after the last sqlc generation. They follow the same
+// shape as the surrounding generated code so a subsequent
+// `make sqlc-gen` will produce equivalent (and idempotent) output.
+
+// GetRoleByName returns the role with the given name, or pgx.ErrNoRows
+// if no row matches. The query is bounded by the UNIQUE constraint on
+// roles.name so LIMIT 1 is documentation, not necessity.
+func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) {
+	const getRoleByName = `-- name: GetRoleByName :one
+SELECT id, name, description, created_at
+FROM roles
+WHERE name = $1
+LIMIT 1
+`
+	row := q.db.QueryRow(ctx, getRoleByName, name)
+	var i Role
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+// ApprovedUserExists returns true when a row with the given id is
+// present. Uses EXISTS so the query plan stops at the first match.
+func (q *Queries) ApprovedUserExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	const approvedUserExists = `-- name: ApprovedUserExists :one
+SELECT EXISTS(SELECT 1 FROM approved_users WHERE id = $1)
+`
+	var exists bool
+	err := q.db.QueryRow(ctx, approvedUserExists, id).Scan(&exists)
+	return exists, err
+}
+
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, approved_user_id, email, password_hash, is_active, created_at, updated_at
 FROM users

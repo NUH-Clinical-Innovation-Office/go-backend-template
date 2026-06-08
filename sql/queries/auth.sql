@@ -35,6 +35,15 @@ SELECT id, name, description, created_at
 FROM roles
 WHERE name = ANY($1::TEXT[]);
 
+-- name: GetRoleByName :one
+SELECT id, name, description, created_at
+FROM roles
+WHERE name = $1
+LIMIT 1;
+
+-- name: ApprovedUserExists :one
+SELECT EXISTS(SELECT 1 FROM approved_users WHERE id = $1);
+
 -- name: AssignRole :exec
 INSERT INTO user_roles (user_id, role_id)
 VALUES ($1, $2)

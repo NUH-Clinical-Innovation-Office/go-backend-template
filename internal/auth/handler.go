@@ -329,6 +329,10 @@ func (h *Handler) DeleteApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 
 	if err := h.admin.DeleteApprovedUser(r.Context(), id); err != nil {
 		h.logger.Error("delete approved user failed", zap.Error(err))
+		if errors.Is(err, ErrApprovedUserNotFound) {
+			http2.RespondError(w, http.StatusNotFound, "approved user not found")
+			return
+		}
 		http2.RespondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}

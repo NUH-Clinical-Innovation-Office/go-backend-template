@@ -456,8 +456,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 
 		r.ServeHTTP(w, req)
 
-		// Delete returns 204 even when user doesn't exist (repo doesn't error)
-		assert.Equal(t, http.StatusNoContent, w.Code)
+		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
 
 	t.Run("delete with invalid uuid", func(t *testing.T) {

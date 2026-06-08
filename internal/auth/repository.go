@@ -3,8 +3,10 @@ package auth
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	dbutil "github.com/your-org/go-backend-template/internal/db/dbutil"
 	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 )
@@ -66,19 +68,25 @@ func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]Role
 	return rolesFromDB(rows), nil
 }
 
-// GetRoleByName gets a role by name. Returns nil, nil if the role does
-// not exist. The query is a thin wrapper over GetRolesByNames with a
-// single-element input.
+// GetRoleByName gets a role by name. Returns (nil, nil) when the role
+// does not exist; other errors are returned as-is.
 func (r *Repository) GetRoleByName(ctx context.Context, name string) (*RoleRow, error) {
-	roles, err := r.db.GetRolesByNames(ctx, []string{name})
+	row, err := r.db.GetRoleByName(ctx, name)
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, err
 	}
-	if len(roles) == 0 {
-		return nil, nil
-	}
-	r0 := roleRowFromDB(roles[0])
+	r0 := roleRowFromDB(row)
 	return &r0, nil
+}
+
+// ApprovedUserExists reports whether a row with the given id is
+// present. The implementation uses an EXISTS subquery so the lookup
+// stops at the first match.
+func (r *Repository) ApprovedUserExists(ctx context.Context, id uuid.UUID) (bool, error) {
+	return r.db.ApprovedUserExists(ctx, dbutil.UUIDToPgtypeValue(id))
 }
 
 // AssignRoleToUser assigns a role to a user.
@@ -119,11 +127,18 @@ func (r *Repository) BulkCreateApprovedUsers(ctx context.Context, in BulkApprove
 	return approvedUsersFromDB(rows), nil
 }
 
-// DeleteApprovedUser deletes an approved user. Returns nil even when
-// the row does not exist; the service is responsible for treating
-// silent success as the expected contract for now.
+// DeleteApprovedUser deletes an approved user. Returns
+// ErrApprovedUserNotFound when no row matched the id, so callers can
+// surface 404 instead of silently succeeding.
 func (r *Repository) DeleteApprovedUser(ctx context.Context, id uuid.UUID) error {
-	return r.db.DeleteApprovedUser(ctx, dbutil.UUIDToPgtypeValue(id))
+	tag, err := r.db.DeleteApprovedUser(ctx, dbutil.UUIDToPgtypeValue(id))
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrApprovedUserNotFound
+	}
+	return nil
 }
 
 // GetApprovedUserByEmail gets an approved user by email.

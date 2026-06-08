@@ -36,7 +36,8 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 		return "", ErrInvalidCredentials
 	}
 
-	if _, err := s.repo.GetApprovedUserByID(ctx, approvedUUID); err != nil {
+	exists, err := s.repo.ApprovedUserExists(ctx, approvedUUID)
+	if err != nil || !exists {
 		return "", ErrUserNotFound
 	}
 
