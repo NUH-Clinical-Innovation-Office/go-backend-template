@@ -78,7 +78,7 @@ func (r *Repository) GetRoleByName(ctx context.Context, name string) (*RoleRow, 
 		}
 		return nil, err
 	}
-	r0 := roleRowFromDB(row)
+	r0 := roleRowFromDB(&row)
 	return &r0, nil
 }
 

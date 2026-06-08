@@ -15,7 +15,7 @@ import (
 // Stale entries are removed on access (no background goroutine needed):
 // each lookup checks the last-seen timestamp and evicts buckets idle for
 // more than idleTimeout. This keeps the map bounded without a janitor.
-func RateLimit(rps int, burst int, idleTimeout time.Duration) func(http.Handler) http.Handler {
+func RateLimit(rps, burst int, idleTimeout time.Duration) func(http.Handler) http.Handler {
 	if rps <= 0 {
 		rps = 1
 	}
@@ -60,7 +60,7 @@ func RateLimit(rps int, burst int, idleTimeout time.Duration) func(http.Handler)
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip, _ := r.Context().Value(ClientIPKey).(string)
+			ip, _ := r.Context().Value(ClientIPKey).(string) //nolint:errcheck // context value is optional, fall back to GetRealIP below
 			if ip == "" {
 				ip = GetRealIP(r)
 			}
@@ -79,7 +79,7 @@ func RateLimit(rps int, burst int, idleTimeout time.Duration) func(http.Handler)
 				w.Header().Set("Retry-After", "1")
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte(`{"detail":"rate limit exceeded"}`))
+				_, _ = w.Write([]byte(`{"detail":"rate limit exceeded"}`)) //nolint:errcheck // response writer error cannot be handled at this point in the middleware chain
 				return
 			}
 

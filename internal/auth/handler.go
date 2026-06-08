@@ -63,9 +63,9 @@ type UserResponse struct {
 
 // Handler holds auth dependencies
 type Handler struct {
-	auth    AuthService
-	admin   ApprovedUserAdminService
-	logger  *zap.Logger
+	auth   AuthService
+	admin  ApprovedUserAdminService
+	logger *zap.Logger
 }
 
 // NewHandler creates a new auth handler. The auth and admin surfaces are

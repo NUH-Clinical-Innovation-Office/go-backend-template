@@ -11,6 +11,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// JWT claim keys used in tokens issued by this service. Centralized as
+// constants so the issuer and the validator never drift.
+const (
+	claimUserID = "user_id"
+	claimEmail  = "email"
+	claimExp    = "exp"
+)
+
 // Service provides authentication business logic
 type Service struct {
 	repo       UserRepository
@@ -41,7 +49,8 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 		return "", ErrUserNotFound
 	}
 
-	if existing, err := s.repo.GetUserByEmail(ctx, email); err == nil && existing != nil {
+	existing, err := s.repo.GetUserByEmail(ctx, email)
+	if err == nil && existing != nil {
 		return "", ErrUserAlreadyExists
 	}
 
@@ -62,16 +71,17 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 
 	// Assign default user role. The role is seeded by the migration so a
 	// missing role here is treated as a no-op rather than a hard error.
-	if userRole, err := s.repo.GetRoleByName(ctx, "user"); err == nil && userRole != nil {
+	userRole, err := s.repo.GetRoleByName(ctx, "user")
+	if err == nil && userRole != nil {
 		if assignErr := s.repo.AssignRoleToUser(ctx, user.ID, userRole.ID); assignErr != nil {
 			return "", assignErr
 		}
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID.String(),
-		"email":   user.Email,
-		"exp":     time.Now().Add(s.jwtExpiry).Unix(),
+		claimUserID: user.ID.String(),
+		claimEmail:  user.Email,
+		claimExp:    time.Now().Add(s.jwtExpiry).Unix(),
 	})
 
 	tokenString, err := token.SignedString(s.jwtSecret)
@@ -98,9 +108,9 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID.String(),
-		"email":   user.Email,
-		"exp":     time.Now().Add(s.jwtExpiry).Unix(),
+		claimUserID: user.ID.String(),
+		claimEmail:  user.Email,
+		claimExp:    time.Now().Add(s.jwtExpiry).Unix(),
 	})
 
 	tokenString, err := token.SignedString(s.jwtSecret)
@@ -131,7 +141,7 @@ func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*do
 		return nil, ErrInvalidCredentials
 	}
 
-	userID, ok := claims["user_id"].(string)
+	userID, ok := claims[claimUserID].(string)
 	if !ok {
 		return nil, ErrInvalidCredentials
 	}

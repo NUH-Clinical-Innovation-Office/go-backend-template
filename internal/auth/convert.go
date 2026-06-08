@@ -2,8 +2,8 @@ package auth
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 	dbutil "github.com/your-org/go-backend-template/internal/db/dbutil"
+	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 )
 
 // userRowFromDB converts a sqlc-generated user row into the feature
@@ -60,7 +60,7 @@ func (in ApprovedUserCreateInput) toCreateParams() db.CreateApprovedUserParams {
 }
 
 // roleRowFromDB converts a sqlc-generated role row.
-func roleRowFromDB(r db.Role) RoleRow {
+func roleRowFromDB(r *db.Role) RoleRow {
 	return RoleRow{
 		ID:          dbutil.PgUUIDToValue(r.ID),
 		Name:        r.Name,
@@ -74,8 +74,8 @@ func roleRowFromDB(r db.Role) RoleRow {
 // the result without a nil check.
 func rolesFromDB(rs []db.Role) []RoleRow {
 	out := make([]RoleRow, len(rs))
-	for i, r := range rs {
-		out[i] = roleRowFromDB(r)
+	for i := range rs {
+		out[i] = roleRowFromDB(&rs[i])
 	}
 	return out
 }

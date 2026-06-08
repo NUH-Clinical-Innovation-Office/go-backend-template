@@ -43,7 +43,7 @@ func New(cfg *RouterConfig) *chi.Mux {
 		loggerMiddleware(cfg.Logger),
 		chimiddleware.Recoverer,
 		timeoutMiddleware(30*time.Second),
-		corsMiddleware(cfg.CORS),
+		corsMiddleware(&cfg.CORS),
 		rateLimitMiddleware(cfg.RateLimit),
 	)
 
@@ -203,7 +203,7 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 // When an origin is in the allow list, it is echoed back. Otherwise "*" is set
 // without credentials. Methods, headers, and max-age are read from the supplied
 // CORSConfig so operators can tune them per environment.
-func corsMiddleware(corsCfg config.CORSConfig) func(http.Handler) http.Handler {
+func corsMiddleware(corsCfg *config.CORSConfig) func(http.Handler) http.Handler {
 	methods := strings.Join(corsCfg.AllowedMethods, ", ")
 	headers := strings.Join(corsCfg.AllowedHeaders, ", ")
 	if methods == "" {
