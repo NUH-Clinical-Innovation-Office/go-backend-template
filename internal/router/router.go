@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/logging"
@@ -17,19 +18,22 @@ import (
 	"github.com/your-org/go-backend-template/internal/todo"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+
+	_ "github.com/your-org/go-backend-template/docs/swagger" // generated swagger docs
 )
 
 // RouterConfig holds dependencies for router setup
 type RouterConfig struct {
-	Logger        *zap.Logger
-	Tracer        trace.Tracer
-	AuthSvc       appmiddleware.AuthProvider
-	TodoService   todo.TodoService
-	AuthHandler   *auth.Handler
-	TodoHandler   *todo.Handler
-	CORS          config.CORSConfig
-	RateLimit     config.RateLimitConfig
-	CheckDBHealth func() error
+	Logger         *zap.Logger
+	Tracer         trace.Tracer
+	AuthSvc        appmiddleware.AuthProvider
+	TodoService    todo.TodoService
+	AuthHandler    *auth.Handler
+	TodoHandler    *todo.Handler
+	CORS           config.CORSConfig
+	RateLimit      config.RateLimitConfig
+	CheckDBHealth  func() error
+	SwaggerEnabled bool
 }
 
 // New creates a new Chi router with all middleware and routes configured
@@ -50,6 +54,15 @@ func New(cfg *RouterConfig) *chi.Mux {
 	// Public routes
 	r.Get("/", rootHandler())
 	r.Get("/health", healthHandlerWithDB(cfg.CheckDBHealth))
+
+	if cfg.SwaggerEnabled {
+		r.Get("/swagger", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, r.RequestURI+"/", http.StatusMovedPermanently)
+		})
+		r.Get("/swagger/*", httpSwagger.Handler(
+			httpSwagger.URL("/swagger/doc.json"),
+		))
+	}
 
 	// API routes
 	r.Route("/api/v1", func(r chi.Router) {

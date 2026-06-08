@@ -110,15 +110,16 @@ func run() error {
 
 	// Build router with all dependencies
 	routerConfig := router.RouterConfig{
-		Logger:        logger,
-		Tracer:        tracer,
-		AuthSvc:       authService,
-		TodoService:   todoService,
-		AuthHandler:   authHandler,
-		TodoHandler:   todoHandler,
-		CORS:          cfg.CORS,
-		RateLimit:     cfg.RateLimit,
-		CheckDBHealth: func() error { return pool.Ping(context.Background()) },
+		Logger:         logger,
+		Tracer:         tracer,
+		AuthSvc:        authService,
+		TodoService:    todoService,
+		AuthHandler:    authHandler,
+		TodoHandler:    todoHandler,
+		CORS:           cfg.CORS,
+		RateLimit:      cfg.RateLimit,
+		CheckDBHealth:  func() error { return pool.Ping(context.Background()) },
+		SwaggerEnabled: cfg.Swagger.Enabled,
 	}
 	mux := router.New(&routerConfig)
 

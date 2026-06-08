@@ -86,10 +86,10 @@ func NewHandler(auth AuthService, admin ApprovedUserAdminService, logger *zap.Lo
 // @Produce      json
 // @Param        body body RegisterRequest true "Registration details"
 // @Success      201 {object} AuthResponse
-// @Failure      400 {object} http2.ErrorResponse
-// @Failure      404 {object} http2.ErrorResponse
-// @Failure      409 {object} http2.ErrorResponse
-// @Failure      500 {object} http2.ErrorResponse
+// @Failure      400 {object} http.ErrorResponse
+// @Failure      404 {object} http.ErrorResponse
+// @Failure      409 {object} http.ErrorResponse
+// @Failure      500 {object} http.ErrorResponse
 // @Router       /auth/register [post]
 func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
@@ -141,9 +141,9 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Param        body body LoginRequest true "Login credentials"
 // @Success      200 {object} AuthResponse
-// @Failure      400 {object} http2.ErrorResponse
-// @Failure      401 {object} http2.ErrorResponse
-// @Failure      500 {object} http2.ErrorResponse
+// @Failure      400 {object} http.ErrorResponse
+// @Failure      401 {object} http.ErrorResponse
+// @Failure      500 {object} http.ErrorResponse
 // @Router       /auth/login [post]
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
@@ -185,7 +185,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200 {object} UserResponse
-// @Failure      401 {object} http2.ErrorResponse
+// @Failure      401 {object} http.ErrorResponse
 // @Router       /me [get]
 func (h *Handler) GetMeHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
@@ -264,8 +264,8 @@ func toApprovedUserResponses(aus []*domain.ApprovedUser) []*ApprovedUserResponse
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200 {array}  ApprovedUserResponse
-// @Failure      401 {object} http2.ErrorResponse
-// @Failure      500 {object} http2.ErrorResponse
+// @Failure      401 {object} http.ErrorResponse
+// @Failure      500 {object} http.ErrorResponse
 // @Router       /admin/approved-users [get]
 func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
 	users, err := h.admin.ListApprovedUsers(r.Context())
@@ -287,10 +287,10 @@ func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Reques
 // @Security     BearerAuth
 // @Param        body body ApprovedUserRequest true "Approved user details"
 // @Success      201 {object} ApprovedUserResponse
-// @Failure      400 {object} http2.ErrorResponse
-// @Failure      401 {object} http2.ErrorResponse
-// @Failure      409 {object} http2.ErrorResponse
-// @Failure      500 {object} http2.ErrorResponse
+// @Failure      400 {object} http.ErrorResponse
+// @Failure      401 {object} http.ErrorResponse
+// @Failure      409 {object} http.ErrorResponse
+// @Failure      500 {object} http.ErrorResponse
 // @Router       /admin/approved-users [post]
 func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req ApprovedUserRequest
@@ -338,9 +338,9 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 // @Security     BearerAuth
 // @Param        body body BulkApprovedUserRequest true "List of approved users"
 // @Success      201 {array}  ApprovedUserResponse
-// @Failure      400 {object} http2.ErrorResponse
-// @Failure      401 {object} http2.ErrorResponse
-// @Failure      500 {object} http2.ErrorResponse
+// @Failure      400 {object} http.ErrorResponse
+// @Failure      401 {object} http.ErrorResponse
+// @Failure      500 {object} http.ErrorResponse
 // @Router       /admin/approved-users/bulk [post]
 func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var req BulkApprovedUserRequest
@@ -386,10 +386,10 @@ func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.
 // @Security     BearerAuth
 // @Param        id path string true "Approved user UUID"
 // @Success      204
-// @Failure      400 {object} http2.ErrorResponse
-// @Failure      401 {object} http2.ErrorResponse
-// @Failure      404 {object} http2.ErrorResponse
-// @Failure      500 {object} http2.ErrorResponse
+// @Failure      400 {object} http.ErrorResponse
+// @Failure      401 {object} http.ErrorResponse
+// @Failure      404 {object} http.ErrorResponse
+// @Failure      500 {object} http.ErrorResponse
 // @Router       /admin/approved-users/{id} [delete]
 func (h *Handler) DeleteApprovedUserHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
