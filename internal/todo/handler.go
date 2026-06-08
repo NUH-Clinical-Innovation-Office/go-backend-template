@@ -54,6 +54,15 @@ func NewHandler(svc TodoService) *Handler {
 }
 
 // ListHandler handles listing todos for the current user
+//
+// @Summary      List todos
+// @Tags         todos
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array}  TodoResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /todos [get]
 func (h *Handler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
@@ -76,6 +85,18 @@ func (h *Handler) ListHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateHandler handles creating a new todo
+//
+// @Summary      Create todo
+// @Tags         todos
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body CreateTodoRequest true "Todo details"
+// @Success      201 {object} TodoResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /todos [post]
 func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
@@ -117,6 +138,18 @@ func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetHandler handles getting a single todo by ID
+//
+// @Summary      Get todo
+// @Tags         todos
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Todo UUID"
+// @Success      200 {object} TodoResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      404 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /todos/{id} [get]
 func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
@@ -150,6 +183,20 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateHandler handles updating a todo
+//
+// @Summary      Update todo
+// @Tags         todos
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path string           true "Todo UUID"
+// @Param        body body UpdateTodoRequest true "Updated todo"
+// @Success      200 {object} TodoResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      404 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /todos/{id} [put]
 func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
@@ -207,6 +254,18 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteHandler handles deleting a todo
+//
+// @Summary      Delete todo
+// @Tags         todos
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Todo UUID"
+// @Success      204
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      404 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /todos/{id} [delete]
 func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
