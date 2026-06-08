@@ -257,7 +257,6 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 //
 // @Summary      Delete todo
 // @Tags         todos
-// @Produce      json
 // @Security     BearerAuth
 // @Param        id path string true "Todo UUID"
 // @Success      204
