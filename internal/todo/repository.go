@@ -5,52 +5,59 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+	dbutil "github.com/your-org/go-backend-template/internal/db/dbutil"
 	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 )
 
-// Repository provides database access for todos
+// Repository provides database access for todos. All methods return
+// feature-local row DTOs; the service never imports internal/db/sqlc
+// or pgtype.
 type Repository struct {
 	db *db.Queries
 }
 
-// NewRepository creates a new todo repository
+// NewRepository creates a new todo repository.
 func NewRepository(q *db.Queries) *Repository {
-	return &Repository{
-		db: q,
-	}
+	return &Repository{db: q}
 }
 
-// GetTodoByID gets a todo by ID
-func (r *Repository) GetTodoByID(ctx context.Context, id pgtype.UUID) (*db.Todo, error) {
-	todo, err := r.db.GetTodoByID(ctx, id)
+// GetTodoByID gets a todo by ID.
+func (r *Repository) GetTodoByID(ctx context.Context, id uuid.UUID) (*TodoRow, error) {
+	t, err := r.db.GetTodoByID(ctx, dbutil.UUIDToPgtypeValue(id))
 	if err != nil {
 		return nil, err
 	}
-	return &todo, nil
+	return todoRowFromDB(&t), nil
 }
 
-// ListTodosByUserID lists all todos for a user
-func (r *Repository) ListTodosByUserID(ctx context.Context, userID uuid.UUID) ([]db.Todo, error) {
-	pgUserID := pgtype.UUID{Bytes: userID, Valid: true}
-	return r.db.ListTodosByUserID(ctx, pgUserID)
-}
-
-// CreateTodo creates a new todo
-func (r *Repository) CreateTodo(ctx context.Context, params *db.CreateTodoParams) (*db.Todo, error) {
-	todo, err := r.db.CreateTodo(ctx, *params)
+// ListTodosByUserID lists all todos for a user.
+func (r *Repository) ListTodosByUserID(ctx context.Context, userID uuid.UUID) ([]TodoRow, error) {
+	rows, err := r.db.ListTodosByUserID(ctx, dbutil.UUIDToPgtypeValue(userID))
 	if err != nil {
 		return nil, err
 	}
-	return &todo, nil
+	return todosFromDB(rows), nil
 }
 
-// UpdateTodo updates a todo
-func (r *Repository) UpdateTodo(ctx context.Context, params *db.UpdateTodoParams) (db.Todo, error) {
-	return r.db.UpdateTodo(ctx, *params)
+// CreateTodo creates a new todo.
+func (r *Repository) CreateTodo(ctx context.Context, in TodoCreateInput) (*TodoRow, error) {
+	t, err := r.db.CreateTodo(ctx, in.toCreateParams())
+	if err != nil {
+		return nil, err
+	}
+	return todoRowFromDB(&t), nil
 }
 
-// DeleteTodo deletes a todo
-func (r *Repository) DeleteTodo(ctx context.Context, id pgtype.UUID) error {
-	return r.db.DeleteTodo(ctx, id)
+// UpdateTodo updates a todo.
+func (r *Repository) UpdateTodo(ctx context.Context, in TodoUpdateInput) (TodoRow, error) {
+	updated, err := r.db.UpdateTodo(ctx, in.toUpdateParams())
+	if err != nil {
+		return TodoRow{}, err
+	}
+	return *todoRowFromDB(&updated), nil
+}
+
+// DeleteTodo deletes a todo.
+func (r *Repository) DeleteTodo(ctx context.Context, id uuid.UUID) error {
+	return r.db.DeleteTodo(ctx, dbutil.UUIDToPgtypeValue(id))
 }

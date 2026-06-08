@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 	"github.com/your-org/go-backend-template/internal/domain"
 )
 
@@ -25,39 +23,33 @@ type Service struct {
 
 // NewService creates a new todo service
 func NewService(repo TodoRepository) *Service {
-	return &Service{
-		repo: repo,
-	}
+	return &Service{repo: repo}
 }
 
 // ListByUserID lists all todos for a user
 func (s *Service) ListByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Todo, error) {
-	todos, err := s.repo.ListTodosByUserID(ctx, userID)
+	rows, err := s.repo.ListTodosByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-
-	result := make([]domain.Todo, len(todos))
-	for i := range todos {
-		result[i] = s.toDomainTodo(&todos[i])
+	out := make([]domain.Todo, len(rows))
+	for i := range rows {
+		out[i] = rowToDomain(&rows[i])
 	}
-	return result, nil
+	return out, nil
 }
 
 // GetByID gets a todo by ID, ensuring it belongs to the user
 func (s *Service) GetByID(ctx context.Context, todoID, userID uuid.UUID) (*domain.Todo, error) {
-	pgTodoID := pgtype.UUID{Bytes: todoID, Valid: true}
-	todo, err := s.repo.GetTodoByID(ctx, pgTodoID)
+	row, err := s.repo.GetTodoByID(ctx, todoID)
 	if err != nil {
 		return nil, ErrTodoNotFound
 	}
-
-	if uuid.UUID(todo.UserID.Bytes) != userID {
+	if row.UserID != userID {
 		return nil, ErrTodoNotOwned
 	}
-
-	result := s.toDomainTodo(todo)
-	return &result, nil
+	d := rowToDomain(row)
+	return &d, nil
 }
 
 // Create creates a new todo
@@ -66,31 +58,18 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title string, de
 		return nil, ErrInvalidTodoParams
 	}
 
-	var pgDueDate pgtype.Timestamptz
-	if dueDate != nil {
-		pgDueDate = pgtype.Timestamptz{Time: *dueDate, Valid: true}
-	}
-
-	var desc *string
-	if description != nil {
-		d := *description
-		desc = &d
-	}
-
-	pgUserID := pgtype.UUID{Bytes: userID, Valid: true}
-	todo, err := s.repo.CreateTodo(ctx, &db.CreateTodoParams{
-		UserID:      pgUserID,
+	row, err := s.repo.CreateTodo(ctx, TodoCreateInput{
+		UserID:      userID,
 		Title:       title,
-		Description: desc,
+		Description: description,
 		IsCompleted: false,
-		DueDate:     pgDueDate,
+		DueDate:     dueDate,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	result := s.toDomainTodo(todo)
-	return &result, nil
+	d := rowToDomain(row)
+	return &d, nil
 }
 
 // Update updates a todo, ensuring it belongs to the user
@@ -99,81 +78,51 @@ func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title st
 		return nil, ErrInvalidTodoParams
 	}
 
-	pgTodoID := pgtype.UUID{Bytes: todoID, Valid: true}
-
-	// First verify ownership
-	existing, err := s.repo.GetTodoByID(ctx, pgTodoID)
+	existing, err := s.repo.GetTodoByID(ctx, todoID)
 	if err != nil {
 		return nil, ErrTodoNotFound
 	}
-
-	if uuid.UUID(existing.UserID.Bytes) != userID {
+	if existing.UserID != userID {
 		return nil, ErrTodoNotOwned
 	}
 
-	var pgDueDate pgtype.Timestamptz
-	if dueDate != nil {
-		pgDueDate = pgtype.Timestamptz{Time: *dueDate, Valid: true}
-	}
-
-	var desc *string
-	if description != nil {
-		d := *description
-		desc = &d
-	}
-
-	updated, err := s.repo.UpdateTodo(ctx, &db.UpdateTodoParams{
-		ID:          pgTodoID,
+	row, err := s.repo.UpdateTodo(ctx, TodoUpdateInput{
+		ID:          todoID,
 		Title:       title,
-		Description: desc,
+		Description: description,
 		IsCompleted: isCompleted,
-		DueDate:     pgDueDate,
+		DueDate:     dueDate,
 	})
 	if err != nil {
 		return nil, err
 	}
-
-	result := s.toDomainTodo(&updated)
-	return &result, nil
+	d := rowToDomain(&row)
+	return &d, nil
 }
 
 // Delete deletes a todo, ensuring it belongs to the user
 func (s *Service) Delete(ctx context.Context, todoID, userID uuid.UUID) error {
-	pgTodoID := pgtype.UUID{Bytes: todoID, Valid: true}
-
-	// First verify ownership
-	existing, err := s.repo.GetTodoByID(ctx, pgTodoID)
+	existing, err := s.repo.GetTodoByID(ctx, todoID)
 	if err != nil {
 		return ErrTodoNotFound
 	}
-
-	if uuid.UUID(existing.UserID.Bytes) != userID {
+	if existing.UserID != userID {
 		return ErrTodoNotOwned
 	}
-
-	return s.repo.DeleteTodo(ctx, pgTodoID)
+	return s.repo.DeleteTodo(ctx, todoID)
 }
 
-func (s *Service) toDomainTodo(todo *db.Todo) domain.Todo {
-	var dueDate *time.Time
-	if todo.DueDate.Valid {
-		t := todo.DueDate.Time
-		dueDate = &t
-	}
-
-	var description *string
-	if todo.Description != nil {
-		description = todo.Description
-	}
-
+// rowToDomain converts a feature row DTO into the cross-feature domain
+// type. Kept private; callers do not need the boundary explained.
+func rowToDomain(r *TodoRow) domain.Todo {
 	return domain.Todo{
-		ID:          uuid.UUID(todo.ID.Bytes),
-		UserID:      uuid.UUID(todo.UserID.Bytes),
-		Title:       todo.Title,
-		Description: description,
-		IsCompleted: todo.IsCompleted,
-		DueDate:     dueDate,
-		CreatedAt:   todo.CreatedAt.Time,
-		UpdatedAt:   todo.UpdatedAt.Time,
+		ID:          r.ID,
+		UserID:      r.UserID,
+		Title:       r.Title,
+		Description: r.Description,
+		IsCompleted: r.IsCompleted,
+		DueDate:     r.DueDate,
+		CreatedAt:   r.CreatedAt,
+		UpdatedAt:   r.UpdatedAt,
 	}
 }

@@ -6,21 +6,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
-	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 	"github.com/your-org/go-backend-template/internal/domain"
 )
 
-// TodoRepository defines the interface for todo data access
+// TodoRepository defines the interface for todo data access. Methods
+// return feature-local row DTOs; the interface has no dependency on
+// internal/db/sqlc or pgtype.
 type TodoRepository interface {
-	GetTodoByID(ctx context.Context, id pgtype.UUID) (*db.Todo, error)
-	ListTodosByUserID(ctx context.Context, userID uuid.UUID) ([]db.Todo, error)
-	CreateTodo(ctx context.Context, params *db.CreateTodoParams) (*db.Todo, error)
-	UpdateTodo(ctx context.Context, params *db.UpdateTodoParams) (db.Todo, error)
-	DeleteTodo(ctx context.Context, id pgtype.UUID) error
+	GetTodoByID(ctx context.Context, id uuid.UUID) (*TodoRow, error)
+	ListTodosByUserID(ctx context.Context, userID uuid.UUID) ([]TodoRow, error)
+	CreateTodo(ctx context.Context, in TodoCreateInput) (*TodoRow, error)
+	UpdateTodo(ctx context.Context, in TodoUpdateInput) (TodoRow, error)
+	DeleteTodo(ctx context.Context, id uuid.UUID) error
 }
 
-// TodoService defines the interface for todo business logic
+// TodoService defines the interface for todo business logic.
 type TodoService interface {
 	ListByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Todo, error)
 	GetByID(ctx context.Context, todoID, userID uuid.UUID) (*domain.Todo, error)
