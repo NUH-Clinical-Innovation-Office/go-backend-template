@@ -48,3 +48,6 @@ Thumbs.db
 # Lefthook
 .lefthook/
 .lefthook-local/
+
+# Swagger generated docs
+docs/swagger/

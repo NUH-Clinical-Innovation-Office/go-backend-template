@@ -19,3 +19,9 @@ func RespondJSON(w http.ResponseWriter, status int, v any) {
 func RespondError(w http.ResponseWriter, status int, message string) {
 	RespondJSON(w, status, map[string]string{"detail": message})
 }
+
+// ErrorResponse is the standard error body returned by all endpoints.
+// Used as the response type in Swagger @Failure annotations.
+type ErrorResponse struct {
+	Detail string `json:"detail"`
+}
