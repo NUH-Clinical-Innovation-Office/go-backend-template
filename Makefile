@@ -1,4 +1,4 @@
-.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy clean install-tools sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci
+.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy clean install-tools swagger sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci
 
 # Variables
 BINARY_NAME=go-backend-template
@@ -49,6 +49,10 @@ clean: ## Clean build artifacts
 install-tools: ## Install required tools
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0
+	@go install github.com/swaggo/swag/cmd/swag@latest
+
+swagger: ## Generate Swagger docs from annotations
+	@swag init --parseInternal -g cmd/api/main.go -o docs/swagger
 
 sqlc-gen: ## Generate sqlc code (re-run after any new migration is added)
 	@sqlc generate
