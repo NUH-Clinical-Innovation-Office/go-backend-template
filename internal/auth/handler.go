@@ -79,6 +79,18 @@ func NewHandler(auth AuthService, admin ApprovedUserAdminService, logger *zap.Lo
 }
 
 // RegisterHandler handles user registration
+//
+// @Summary      Register a new user
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body body RegisterRequest true "Registration details"
+// @Success      201 {object} AuthResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      404 {object} http2.ErrorResponse
+// @Failure      409 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /auth/register [post]
 func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
@@ -122,6 +134,17 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // LoginHandler handles user login
+//
+// @Summary      Login
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        body body LoginRequest true "Login credentials"
+// @Success      200 {object} AuthResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /auth/login [post]
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var req LoginRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
@@ -156,6 +179,14 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetMeHandler handles getting current user info
+//
+// @Summary      Get current user
+// @Tags         auth
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {object} UserResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Router       /me [get]
 func (h *Handler) GetMeHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
@@ -227,6 +258,15 @@ func toApprovedUserResponses(aus []*domain.ApprovedUser) []*ApprovedUserResponse
 }
 
 // ListApprovedUsersHandler handles GET /admin/approved-users
+//
+// @Summary      List approved users
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200 {array}  ApprovedUserResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /admin/approved-users [get]
 func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
 	users, err := h.admin.ListApprovedUsers(r.Context())
 	if err != nil {
@@ -239,6 +279,19 @@ func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Reques
 }
 
 // CreateApprovedUserHandler handles POST /admin/approved-users
+//
+// @Summary      Create approved user
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body ApprovedUserRequest true "Approved user details"
+// @Success      201 {object} ApprovedUserResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      409 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /admin/approved-users [post]
 func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req ApprovedUserRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
@@ -277,6 +330,18 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 }
 
 // BulkCreateApprovedUsersHandler handles POST /admin/approved-users/bulk
+//
+// @Summary      Bulk create approved users
+// @Tags         admin
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body BulkApprovedUserRequest true "List of approved users"
+// @Success      201 {array}  ApprovedUserResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /admin/approved-users/bulk [post]
 func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
 	var req BulkApprovedUserRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
@@ -314,6 +379,18 @@ func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.
 }
 
 // DeleteApprovedUserHandler handles DELETE /admin/approved-users/{id}
+//
+// @Summary      Delete approved user
+// @Tags         admin
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "Approved user UUID"
+// @Success      204
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
+// @Failure      404 {object} http2.ErrorResponse
+// @Failure      500 {object} http2.ErrorResponse
+// @Router       /admin/approved-users/{id} [delete]
 func (h *Handler) DeleteApprovedUserHandler(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 	if idStr == "" {
