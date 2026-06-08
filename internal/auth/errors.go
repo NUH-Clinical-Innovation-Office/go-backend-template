@@ -26,4 +26,9 @@ var (
 	// ErrApprovedUserNotFound is returned by DeleteApprovedUser when the
 	// target row does not exist.
 	ErrApprovedUserNotFound = errors.New("approved user not found")
+
+	// ErrInvalidInput is returned by the repository when its caller
+	// passes inconsistent input (e.g. emails and first_names slices of
+	// different lengths in a bulk approved-user insert).
+	ErrInvalidInput = errors.New("invalid input")
 )

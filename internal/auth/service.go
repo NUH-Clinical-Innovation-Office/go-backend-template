@@ -3,12 +3,10 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 	"github.com/your-org/go-backend-template/internal/domain"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -33,33 +31,26 @@ func NewService(repo UserRepository, jwtSecret string, jwtExpiry time.Duration, 
 
 // Register registers a new user
 func (s *Service) Register(ctx context.Context, email, password, approvedID string) (string, error) {
-	// Verify approved user exists
 	approvedUUID, err := uuid.Parse(approvedID)
 	if err != nil {
 		return "", ErrInvalidCredentials
 	}
 
-	approvedUser, err := s.repo.GetApprovedUserByID(ctx, approvedUUID)
-	if err != nil {
+	if _, err := s.repo.GetApprovedUserByID(ctx, approvedUUID); err != nil {
 		return "", ErrUserNotFound
 	}
-	_ = approvedUser
 
-	// Check if user already exists
-	existingUser, err := s.repo.GetUserByEmail(ctx, email)
-	if err == nil && existingUser != nil {
+	if existing, err := s.repo.GetUserByEmail(ctx, email); err == nil && existing != nil {
 		return "", ErrUserAlreadyExists
 	}
 
-	// Hash password with configurable cost
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), s.bcryptCost)
 	if err != nil {
 		return "", err
 	}
 
-	// Create user
-	user, err := s.repo.CreateUser(ctx, db.CreateUserParams{
-		ApprovedUserID: uuidToPgtype(approvedUUID),
+	user, err := s.repo.CreateUser(ctx, UserCreateInput{
+		ApprovedUserID: approvedUUID,
 		Email:          email,
 		PasswordHash:   string(hashedPassword),
 		IsActive:       true,
@@ -68,15 +59,14 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 		return "", err
 	}
 
-	// Assign default user role
-	userRole, err := s.repo.GetRoleByName(ctx, "user")
-	if err == nil && userRole != nil {
-		if assignErr := s.repo.AssignRoleToUser(ctx, pgtypeToUuid(user.ID), pgtypeToUuid(userRole.ID)); assignErr != nil {
+	// Assign default user role. The role is seeded by the migration so a
+	// missing role here is treated as a no-op rather than a hard error.
+	if userRole, err := s.repo.GetRoleByName(ctx, "user"); err == nil && userRole != nil {
+		if assignErr := s.repo.AssignRoleToUser(ctx, user.ID, userRole.ID); assignErr != nil {
 			return "", assignErr
 		}
 	}
 
-	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID.String(),
 		"email":   user.Email,
@@ -93,24 +83,19 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 
 // Login authenticates a user and returns a JWT token
 func (s *Service) Login(ctx context.Context, email, password string) (string, error) {
-	// Get user by email
 	user, err := s.repo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return "", ErrInvalidCredentials
 	}
 
-	// Deactivated users cannot log in. Surface as ErrInvalidCredentials to
-	// avoid leaking account state to the caller.
 	if !user.IsActive {
 		return "", ErrInvalidCredentials
 	}
 
-	// Check password
 	if cmpErr := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); cmpErr != nil {
 		return "", ErrInvalidCredentials
 	}
 
-	// Generate JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": user.ID.String(),
 		"email":   user.Email,
@@ -127,7 +112,6 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 
 // GetUserFromToken validates a JWT token and returns the user
 func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*domain.User, error) {
-	// Parse token
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, ErrInvalidCredentials
@@ -137,7 +121,6 @@ func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*do
 		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 		jwt.WithExpirationRequired(),
 	)
-
 	if err != nil {
 		return nil, ErrInvalidCredentials
 	}
@@ -157,58 +140,94 @@ func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*do
 		return nil, ErrInvalidCredentials
 	}
 
-	// Get user from database
 	user, err := s.repo.GetUserByID(ctx, id)
 	if err != nil {
 		return nil, ErrUserNotFound
 	}
 
-	// Deactivated users keep their JWT valid until expiry otherwise.
-	// Treat as invalid credentials without leaking account state.
 	if !user.IsActive {
 		return nil, ErrInvalidCredentials
 	}
 
-	// Get user roles
-	roles, err := s.repo.GetUserRoles(ctx, pgtypeToUuid(user.ID))
+	roles, err := s.repo.GetUserRoles(ctx, user.ID)
 	if err != nil {
-		roles = []db.Role{}
+		roles = []RoleRow{}
 	}
 
-	// Get approved user
-	approvedUser, err := s.repo.GetApprovedUserByID(ctx, pgtypeToUuid(user.ApprovedUserID))
+	approvedUser, err := s.repo.GetApprovedUserByID(ctx, user.ApprovedUserID)
 	if err != nil {
 		approvedUser = nil
 	}
 
-	return s.repo.ToDomainUser(user, approvedUser, roles), nil
+	return ToDomainUser(user, approvedUser, roles), nil
 }
 
 // ListApprovedUsers lists all approved users (admin only)
 func (s *Service) ListApprovedUsers(ctx context.Context) ([]*domain.ApprovedUser, error) {
-	return s.repo.ListApprovedUsers(ctx)
+	rows, err := s.repo.ListApprovedUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return approvedUsersToDomain(rows), nil
 }
 
 // CreateApprovedUser creates a new approved user (admin only)
 func (s *Service) CreateApprovedUser(ctx context.Context, email, firstName string, createdBy uuid.UUID) (*domain.ApprovedUser, error) {
-	// Check if email already exists
-	existing, err := s.repo.GetApprovedUserByEmail(ctx, email)
-	if err == nil && existing != nil {
+	if existing, err := s.repo.GetApprovedUserByEmail(ctx, email); err == nil && existing != nil {
 		return nil, ErrApprovedEmailExists
 	}
 
-	return s.repo.CreateApprovedUser(ctx, email, firstName, createdBy)
+	row, err := s.repo.CreateApprovedUser(ctx, ApprovedUserCreateInput{
+		Email:     email,
+		FirstName: firstName,
+		CreatedBy: createdBy,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return approvedUserToDomain(row), nil
 }
 
 // BulkCreateApprovedUsers creates multiple approved users (admin only)
 func (s *Service) BulkCreateApprovedUsers(ctx context.Context, emails, firstNames []string, createdBy uuid.UUID) ([]*domain.ApprovedUser, error) {
 	if len(emails) != len(firstNames) {
-		return nil, errors.New("emails and firstNames must have same length")
+		return nil, ErrInvalidInput
 	}
-	return s.repo.BulkCreateApprovedUsers(ctx, emails, firstNames, createdBy)
+	rows, err := s.repo.BulkCreateApprovedUsers(ctx, BulkApprovedUserInput{
+		Emails:     emails,
+		FirstNames: firstNames,
+		CreatedBy:  createdBy,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return approvedUsersToDomain(rows), nil
 }
 
 // DeleteApprovedUser deletes an approved user (admin only)
 func (s *Service) DeleteApprovedUser(ctx context.Context, id uuid.UUID) error {
 	return s.repo.DeleteApprovedUser(ctx, id)
+}
+
+// approvedUserToDomain wraps a row into the cross-feature domain type.
+func approvedUserToDomain(r *ApprovedUserRow) *domain.ApprovedUser {
+	if r == nil {
+		return nil
+	}
+	return &domain.ApprovedUser{
+		ID:        r.ID,
+		Email:     r.Email,
+		FirstName: r.FirstName,
+		CreatedBy: r.CreatedBy,
+		CreatedAt: r.CreatedAt,
+		UpdatedAt: r.UpdatedAt,
+	}
+}
+
+func approvedUsersToDomain(rs []*ApprovedUserRow) []*domain.ApprovedUser {
+	out := make([]*domain.ApprovedUser, len(rs))
+	for i, r := range rs {
+		out[i] = approvedUserToDomain(r)
+	}
+	return out
 }

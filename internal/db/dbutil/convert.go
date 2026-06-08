@@ -25,6 +25,23 @@ func UUIDToPgtype(u *uuid.UUID) pgtype.UUID {
 	return pgtype.UUID{Bytes: *u, Valid: true}
 }
 
+// UUIDToPgtypeValue converts a uuid.UUID (by value) to pgtype.UUID. The
+// returned value is always Valid; callers that may want to represent
+// a "null" UUID should use *uuid.UUID + UUIDToPgtype instead.
+func UUIDToPgtypeValue(u uuid.UUID) pgtype.UUID {
+	return pgtype.UUID{Bytes: u, Valid: true}
+}
+
+// PgUUIDToValue converts a pgtype.UUID to uuid.UUID. Invalid input
+// yields uuid.Nil; callers that need to distinguish nil from zero
+// should use PgUUIDToPtr instead.
+func PgUUIDToValue(p pgtype.UUID) uuid.UUID {
+	if !p.Valid {
+		return uuid.Nil
+	}
+	return uuid.UUID(p.Bytes)
+}
+
 // PgTimestamptzToPtr converts pgtype.Timestamptz to *time.Time
 func PgTimestamptzToPtr(t pgtype.Timestamptz) *time.Time {
 	if !t.Valid {

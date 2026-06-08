@@ -5,25 +5,25 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	db "github.com/your-org/go-backend-template/internal/db/sqlc"
 	"github.com/your-org/go-backend-template/internal/domain"
 )
 
-// UserRepository defines the interface for user data access.
+// UserRepository defines the interface for user data access. Methods
+// return feature-local row DTOs; the interface has no dependency on
+// internal/db/sqlc.
 type UserRepository interface {
-	GetUserByEmail(ctx context.Context, email string) (*db.User, error)
-	GetUserByID(ctx context.Context, id uuid.UUID) (*db.User, error)
-	CreateUser(ctx context.Context, params db.CreateUserParams) (*db.User, error)
-	GetApprovedUserByID(ctx context.Context, id uuid.UUID) (*db.ApprovedUser, error)
-	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]db.Role, error)
-	GetRoleByName(ctx context.Context, name string) (*db.Role, error)
+	GetUserByEmail(ctx context.Context, email string) (*UserRow, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (*UserRow, error)
+	CreateUser(ctx context.Context, in UserCreateInput) (*UserRow, error)
+	GetApprovedUserByID(ctx context.Context, id uuid.UUID) (*ApprovedUserRow, error)
+	GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleRow, error)
+	GetRoleByName(ctx context.Context, name string) (*RoleRow, error)
 	AssignRoleToUser(ctx context.Context, userID, roleID uuid.UUID) error
-	ToDomainUser(user *db.User, approvedUser *db.ApprovedUser, roles []db.Role) *domain.User
-	ListApprovedUsers(ctx context.Context) ([]*domain.ApprovedUser, error)
-	CreateApprovedUser(ctx context.Context, email, firstName string, createdBy uuid.UUID) (*domain.ApprovedUser, error)
-	BulkCreateApprovedUsers(ctx context.Context, emails, firstNames []string, createdBy uuid.UUID) ([]*domain.ApprovedUser, error)
+	ListApprovedUsers(ctx context.Context) ([]*ApprovedUserRow, error)
+	CreateApprovedUser(ctx context.Context, in ApprovedUserCreateInput) (*ApprovedUserRow, error)
+	BulkCreateApprovedUsers(ctx context.Context, in BulkApprovedUserInput) ([]*ApprovedUserRow, error)
 	DeleteApprovedUser(ctx context.Context, id uuid.UUID) error
-	GetApprovedUserByEmail(ctx context.Context, email string) (*domain.ApprovedUser, error)
+	GetApprovedUserByEmail(ctx context.Context, email string) (*ApprovedUserRow, error)
 }
 
 // AuthService is the authentication-focused surface. Middleware that only

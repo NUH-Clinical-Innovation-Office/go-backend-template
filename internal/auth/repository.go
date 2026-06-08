@@ -5,69 +5,71 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
+	dbutil "github.com/your-org/go-backend-template/internal/db/dbutil"
 	db "github.com/your-org/go-backend-template/internal/db/sqlc"
-	"github.com/your-org/go-backend-template/internal/domain"
 )
 
-// Repository provides database access for auth
+// Repository provides database access for auth. All methods return
+// feature-local row DTOs (UserRow, ApprovedUserRow, RoleRow) so the
+// service layer never imports internal/db/sqlc or pgtype.
 type Repository struct {
 	db *db.Queries
 }
 
-// NewRepository creates a new auth repository
+// NewRepository creates a new auth repository.
 func NewRepository(q *db.Queries) *Repository {
-	return &Repository{
-		db: q,
-	}
+	return &Repository{db: q}
 }
 
-// GetUserByEmail gets a user by email
-func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*db.User, error) {
-	user, err := r.db.GetUserByEmail(ctx, email)
+// GetUserByEmail gets a user by email.
+func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*UserRow, error) {
+	u, err := r.db.GetUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
-	return &user, nil
+	return userRowFromDB(&u), nil
 }
 
-// GetUserByID gets a user by ID
-func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (*db.User, error) {
-	pgID := pgtype.UUID{Bytes: id, Valid: true}
-	user, err := r.db.GetUserByID(ctx, pgID)
+// GetUserByID gets a user by ID.
+func (r *Repository) GetUserByID(ctx context.Context, id uuid.UUID) (*UserRow, error) {
+	u, err := r.db.GetUserByID(ctx, dbutil.UUIDToPgtypeValue(id))
 	if err != nil {
 		return nil, err
 	}
-	return &user, nil
+	return userRowFromDB(&u), nil
 }
 
-// CreateUser creates a new user
-func (r *Repository) CreateUser(ctx context.Context, params db.CreateUserParams) (*db.User, error) {
-	user, err := r.db.CreateUser(ctx, params)
+// CreateUser creates a new user.
+func (r *Repository) CreateUser(ctx context.Context, in UserCreateInput) (*UserRow, error) {
+	u, err := r.db.CreateUser(ctx, in.toCreateParams())
 	if err != nil {
 		return nil, err
 	}
-	return &user, nil
+	return userRowFromDB(&u), nil
 }
 
-// GetApprovedUserByID gets an approved user by ID
-func (r *Repository) GetApprovedUserByID(ctx context.Context, id uuid.UUID) (*db.ApprovedUser, error) {
-	pgID := pgtype.UUID{Bytes: id, Valid: true}
-	approvedUser, err := r.db.GetApprovedUserByID(ctx, pgID)
+// GetApprovedUserByID gets an approved user by ID.
+func (r *Repository) GetApprovedUserByID(ctx context.Context, id uuid.UUID) (*ApprovedUserRow, error) {
+	a, err := r.db.GetApprovedUserByID(ctx, dbutil.UUIDToPgtypeValue(id))
 	if err != nil {
 		return nil, err
 	}
-	return &approvedUser, nil
+	return approvedUserRowFromDB(&a), nil
 }
 
-// GetUserRoles gets roles for a user
-func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]db.Role, error) {
-	pgUserID := pgtype.UUID{Bytes: userID, Valid: true}
-	return r.db.GetUserRoles(ctx, pgUserID)
+// GetUserRoles gets roles for a user.
+func (r *Repository) GetUserRoles(ctx context.Context, userID uuid.UUID) ([]RoleRow, error) {
+	rows, err := r.db.GetUserRoles(ctx, dbutil.UUIDToPgtypeValue(userID))
+	if err != nil {
+		return nil, err
+	}
+	return rolesFromDB(rows), nil
 }
 
-// GetRoleByName gets a role by name
-func (r *Repository) GetRoleByName(ctx context.Context, name string) (*db.Role, error) {
+// GetRoleByName gets a role by name. Returns nil, nil if the role does
+// not exist. The query is a thin wrapper over GetRolesByNames with a
+// single-element input.
+func (r *Repository) GetRoleByName(ctx context.Context, name string) (*RoleRow, error) {
 	roles, err := r.db.GetRolesByNames(ctx, []string{name})
 	if err != nil {
 		return nil, err
@@ -75,171 +77,60 @@ func (r *Repository) GetRoleByName(ctx context.Context, name string) (*db.Role, 
 	if len(roles) == 0 {
 		return nil, nil
 	}
-	return &roles[0], nil
+	r0 := roleRowFromDB(roles[0])
+	return &r0, nil
 }
 
-// AssignRoleToUser assigns a role to a user
+// AssignRoleToUser assigns a role to a user.
 func (r *Repository) AssignRoleToUser(ctx context.Context, userID, roleID uuid.UUID) error {
 	return r.db.AssignRole(ctx, db.AssignRoleParams{
-		UserID: pgtype.UUID{Bytes: userID, Valid: true},
-		RoleID: pgtype.UUID{Bytes: roleID, Valid: true},
+		UserID: dbutil.UUIDToPgtypeValue(userID),
+		RoleID: dbutil.UUIDToPgtypeValue(roleID),
 	})
 }
 
-// uuidToPgtype converts uuid.UUID to pgtype.UUID
-func uuidToPgtype(u uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{Bytes: u, Valid: true}
-}
-
-// pgtypeToUuid converts pgtype.UUID to uuid.UUID
-func pgtypeToUuid(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
-
-// pgApprovedUserToUuid converts pgtype.UUID to *uuid.UUID
-func pgApprovedUserToUuid(p pgtype.UUID) *uuid.UUID {
-	if !p.Valid {
-		return nil
-	}
-	u := uuid.UUID(p.Bytes)
-	return &u
-}
-
-// ToDomainUser converts db.User to domain.User
-func (r *Repository) ToDomainUser(user *db.User, approvedUser *db.ApprovedUser, roles []db.Role) *domain.User {
-	domainRoles := make([]domain.Role, len(roles))
-	for i, role := range roles {
-		domainRoles[i] = domain.Role{
-			ID:          pgtypeToUuid(role.ID),
-			Name:        role.Name,
-			Description: role.Description,
-			CreatedAt:   role.CreatedAt.Time,
-		}
-	}
-
-	var approvedUserDomain *domain.ApprovedUser
-	if approvedUser != nil {
-		approvedUserDomain = &domain.ApprovedUser{
-			ID:        pgtypeToUuid(approvedUser.ID),
-			Email:     approvedUser.Email,
-			FirstName: approvedUser.FirstName,
-			CreatedBy: pgApprovedUserToUuid(approvedUser.CreatedBy),
-			CreatedAt: approvedUser.CreatedAt.Time,
-			UpdatedAt: approvedUser.UpdatedAt.Time,
-		}
-	}
-
-	return &domain.User{
-		ID:             pgtypeToUuid(user.ID),
-		ApprovedUserID: pgtypeToUuid(user.ApprovedUserID),
-		HashedPassword: user.PasswordHash,
-		IsActive:       user.IsActive,
-		CreatedAt:      user.CreatedAt.Time,
-		UpdatedAt:      user.UpdatedAt.Time,
-		Roles:          domainRoles,
-		ApprovedUser:   approvedUserDomain,
-	}
-}
-
-// ListApprovedUsers lists all approved users
-func (r *Repository) ListApprovedUsers(ctx context.Context) ([]*domain.ApprovedUser, error) {
+// ListApprovedUsers lists all approved users.
+func (r *Repository) ListApprovedUsers(ctx context.Context) ([]*ApprovedUserRow, error) {
 	rows, err := r.db.ListApprovedUsers(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	result := make([]*domain.ApprovedUser, 0, len(rows))
-	for i := range rows {
-		row := &rows[i]
-		result = append(result, &domain.ApprovedUser{
-			ID:        pgtypeToUuid(row.ID),
-			Email:     row.Email,
-			FirstName: row.FirstName,
-			CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
-			CreatedAt: row.CreatedAt.Time,
-			UpdatedAt: row.UpdatedAt.Time,
-		})
-	}
-	return result, nil
+	return approvedUsersFromDB(rows), nil
 }
 
-// CreateApprovedUser creates a new approved user
-func (r *Repository) CreateApprovedUser(ctx context.Context, email, firstName string, createdBy uuid.UUID) (*domain.ApprovedUser, error) {
-	row, err := r.db.CreateApprovedUser(ctx, db.CreateApprovedUserParams{
-		Email:     email,
-		FirstName: firstName,
-		CreatedBy: uuidToPgtype(createdBy),
-	})
+// CreateApprovedUser creates a new approved user.
+func (r *Repository) CreateApprovedUser(ctx context.Context, in ApprovedUserCreateInput) (*ApprovedUserRow, error) {
+	row, err := r.db.CreateApprovedUser(ctx, in.toCreateParams())
 	if err != nil {
 		return nil, err
 	}
-
-	return &domain.ApprovedUser{
-		ID:        pgtypeToUuid(row.ID),
-		Email:     row.Email,
-		FirstName: row.FirstName,
-		CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
-	}, nil
+	return approvedUserRowFromDB(&row), nil
 }
 
-// BulkCreateApprovedUsers creates multiple approved users
-func (r *Repository) BulkCreateApprovedUsers(ctx context.Context, emails, firstNames []string, createdBy uuid.UUID) ([]*domain.ApprovedUser, error) {
-	pgCreatedBy := uuidToPgtype(createdBy)
-	emailsPg := make([]string, len(emails))
-	firstNamesPg := make([]string, len(firstNames))
-	createdByPg := make([]pgtype.UUID, len(emails))
-	copy(emailsPg, emails)
-	copy(firstNamesPg, firstNames)
-	for i := range createdByPg {
-		createdByPg[i] = pgCreatedBy
+// BulkCreateApprovedUsers creates multiple approved users.
+func (r *Repository) BulkCreateApprovedUsers(ctx context.Context, in BulkApprovedUserInput) ([]*ApprovedUserRow, error) {
+	if len(in.Emails) != len(in.FirstNames) {
+		return nil, ErrInvalidInput
 	}
-
-	rows, err := r.db.CreateApprovedUsersBulk(ctx, db.CreateApprovedUsersBulkParams{
-		Column1: emailsPg,
-		Column2: firstNamesPg,
-		Column3: createdByPg,
-	})
+	rows, err := r.db.CreateApprovedUsersBulk(ctx, in.toCreateParams())
 	if err != nil {
 		return nil, err
 	}
-
-	result := make([]*domain.ApprovedUser, 0, len(rows))
-	for i := range rows {
-		row := &rows[i]
-		result = append(result, &domain.ApprovedUser{
-			ID:        pgtypeToUuid(row.ID),
-			Email:     row.Email,
-			FirstName: row.FirstName,
-			CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
-			CreatedAt: row.CreatedAt.Time,
-			UpdatedAt: row.UpdatedAt.Time,
-		})
-	}
-	return result, nil
+	return approvedUsersFromDB(rows), nil
 }
 
-// DeleteApprovedUser deletes an approved user
+// DeleteApprovedUser deletes an approved user. Returns nil even when
+// the row does not exist; the service is responsible for treating
+// silent success as the expected contract for now.
 func (r *Repository) DeleteApprovedUser(ctx context.Context, id uuid.UUID) error {
-	return r.db.DeleteApprovedUser(ctx, uuidToPgtype(id))
+	return r.db.DeleteApprovedUser(ctx, dbutil.UUIDToPgtypeValue(id))
 }
 
-// GetApprovedUserByEmail gets an approved user by email
-func (r *Repository) GetApprovedUserByEmail(ctx context.Context, email string) (*domain.ApprovedUser, error) {
-	row, err := r.db.GetApprovedUserByEmail(ctx, email)
+// GetApprovedUserByEmail gets an approved user by email.
+func (r *Repository) GetApprovedUserByEmail(ctx context.Context, email string) (*ApprovedUserRow, error) {
+	a, err := r.db.GetApprovedUserByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
-	return &domain.ApprovedUser{
-		ID:        pgtypeToUuid(row.ID),
-		Email:     row.Email,
-		FirstName: row.FirstName,
-		CreatedBy: pgApprovedUserToUuid(row.CreatedBy),
-		CreatedAt: row.CreatedAt.Time,
-		UpdatedAt: row.UpdatedAt.Time,
-	}, nil
+	return approvedUserRowFromDB(&a), nil
 }
