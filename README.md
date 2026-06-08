@@ -1,7 +1,7 @@
 # Go Backend Template
 
 [![Go Version](https://img.shields.io/badge/Go-1.26%2B-blue)](https://golang.org/doc/go1.26)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue)](LICENSE)
 
 A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 
@@ -240,7 +240,9 @@ See [docs/contributing/](docs/contributing/) for development guidelines.
 
 ## License
 
-MIT
+Copyright 2025 NUH Department of Medicine
+
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
 
 ## Documentation
 
