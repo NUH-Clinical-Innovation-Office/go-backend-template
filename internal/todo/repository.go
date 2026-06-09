@@ -48,9 +48,10 @@ func (r *Repository) CreateTodo(ctx context.Context, in TodoCreateInput) (*TodoR
 	return todoRowFromDB(&t), nil
 }
 
-// UpdateTodo updates a todo.
-func (r *Repository) UpdateTodo(ctx context.Context, in TodoUpdateInput) (TodoRow, error) {
-	updated, err := r.db.UpdateTodo(ctx, in.toUpdateParams())
+// UpdateTodoPartial applies a PATCH-style update. nil pointer fields
+// preserve the existing column.
+func (r *Repository) UpdateTodoPartial(ctx context.Context, in TodoUpdateInput) (TodoRow, error) {
+	updated, err := r.db.UpdateTodoPartial(ctx, in.toUpdateParamsPartial())
 	if err != nil {
 		return TodoRow{}, err
 	}

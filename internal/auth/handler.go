@@ -98,12 +98,11 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := &validator.RegisterRequestValidator{
+	if err := validator.ValidateRegister(validator.RegisterRequest{
 		Email:      req.Email,
 		Password:   req.Password,
 		ApprovedID: req.ApprovedID,
-	}
-	if err := v.Validate(); err != nil {
+	}); err != nil {
 		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -152,11 +151,10 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	v := &validator.LoginRequestValidator{
+	if err := validator.ValidateLogin(validator.LoginRequest{
 		Email:    req.Email,
 		Password: req.Password,
-	}
-	if err := v.Validate(); err != nil {
+	}); err != nil {
 		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
@@ -299,11 +297,10 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	v := &validator.ApprovedUserRequestValidator{
+	if err := validator.ValidateApprovedUser(validator.ApprovedUserRequest{
 		Email:     req.Email,
 		FirstName: req.FirstName,
-	}
-	if err := v.Validate(); err != nil {
+	}); err != nil {
 		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}

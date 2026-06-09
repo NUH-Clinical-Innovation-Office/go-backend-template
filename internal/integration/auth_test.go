@@ -12,9 +12,31 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/your-org/go-backend-template/internal/auth"
+	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/logging"
 	"github.com/your-org/go-backend-template/internal/router"
+	"github.com/your-org/go-backend-template/internal/todo"
+	"go.opentelemetry.io/otel/trace/noop"
 )
+
+// newTestRouter builds a router for tests with permissive defaults.
+func newTestRouter(authSvc *auth.Service, authHandler *auth.Handler, todoHandler *todo.Handler) http.Handler {
+	logger, _ := logging.New("debug", "console")
+	return router.New(
+		logger,
+		noop.NewTracerProvider().Tracer("test"),
+		authSvc,
+		authHandler,
+		todoHandler,
+		config.CORSConfig{},
+		config.RateLimitConfig{Requests: 0}, // disabled
+		func() error { return nil },
+		false,
+		nil,
+	)
+}
+
 
 func TestAuthRegister(t *testing.T) {
 	pool, _, _, _, _, _, authHandler, todoHandler := setupTestDeps(t)
@@ -26,12 +48,7 @@ func TestAuthRegister(t *testing.T) {
 		"INSERT INTO approved_users (id, email, first_name) VALUES ('00000000-0000-0000-0000-000000000001'::uuid, 'test@example.com', 'Test')")
 	require.NoError(t, err)
 
-	logger, _ := logging.New("debug", "console")
-	r := router.New(&router.RouterConfig{
-		Logger:      logger,
-		AuthHandler: authHandler,
-		TodoHandler: todoHandler,
-	})
+	r := newTestRouter(nil, authHandler, todoHandler)
 
 	t.Run("successful registration", func(t *testing.T) {
 		body := map[string]string{
@@ -196,12 +213,7 @@ func TestAuthLogin(t *testing.T) {
 	_, err = authService.Register(ctx, "login@example.com", "Password123", "00000000-0000-0000-0000-000000000002")
 	require.NoError(t, err)
 
-	logger, _ := logging.New("debug", "console")
-	r := router.New(&router.RouterConfig{
-		Logger:      logger,
-		AuthHandler: authHandler,
-		TodoHandler: todoHandler,
-	})
+	r := newTestRouter(nil, authHandler, todoHandler)
 
 	t.Run("successful login", func(t *testing.T) {
 		body := map[string]string{
@@ -310,13 +322,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 		"INSERT INTO user_roles (user_id, role_id) VALUES ((SELECT id FROM users WHERE email = 'admin-test@example.com'), (SELECT id FROM roles WHERE name = 'admin'))")
 	require.NoError(t, err)
 
-	logger, _ := logging.New("debug", "console")
-	r := router.New(&router.RouterConfig{
-		Logger:      logger,
-		AuthSvc:     authService,
-		AuthHandler: authHandler,
-		TodoHandler: todoHandler,
-	})
+	r := newTestRouter(authService, authHandler, todoHandler)
 
 	t.Run("create approved user", func(t *testing.T) {
 		body := map[string]string{

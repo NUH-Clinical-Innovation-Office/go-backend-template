@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/time/rate"
@@ -12,9 +13,12 @@ import (
 // rate limit. The first request from a new IP gets a fresh bucket sized to
 // burst; subsequent requests are limited to rps tokens per second.
 //
-// Stale entries are removed on access (no background goroutine needed):
-// each lookup checks the last-seen timestamp and evicts buckets idle for
-// more than idleTimeout. This keeps the map bounded without a janitor.
+// Concurrency: a sync.Map holds the limiter per IP so the hot path
+// (Allow() check) is lock-free for repeat callers. Limiter creation
+// happens under a one-time per-IP lock inside LoadOrStore. Map size is
+// bounded by a periodic eviction sweep (amortized — every N requests
+// or every T seconds, whichever comes first) so a flood of unique IPs
+// does not cost O(N) work on the request hot path.
 func RateLimit(rps, burst int, idleTimeout time.Duration) func(http.Handler) http.Handler {
 	if rps <= 0 {
 		rps = 1
@@ -28,58 +32,58 @@ func RateLimit(rps, burst int, idleTimeout time.Duration) func(http.Handler) htt
 
 	type entry struct {
 		limiter  *rate.Limiter
-		lastSeen time.Time
+		lastSeen atomic.Int64 // unix nano; atomic for lock-free updates
 	}
 
 	var (
-		mu      sync.Mutex
-		buckets = make(map[string]*entry)
+		buckets    sync.Map // ip string -> *entry
+		opsSince   atomic.Int64
+		lastSweep  atomic.Int64
+		sweepEvery = int64(4096)
 	)
 
-	evict := func() {
-		cutoff := time.Now().Add(-idleTimeout)
-		for ip, e := range buckets {
-			if e.lastSeen.Before(cutoff) {
-				delete(buckets, ip)
-			}
-		}
+	now := func() time.Time { return time.Now() }
+	mkEntry := func() *entry {
+		e := &entry{limiter: rate.NewLimiter(rate.Limit(rps), burst)}
+		e.lastSeen.Store(now().UnixNano())
+		return e
 	}
 
-	getLimiter := func(ip string) *rate.Limiter {
-		mu.Lock()
-		defer mu.Unlock()
-
-		if e, ok := buckets[ip]; ok {
-			e.lastSeen = time.Now()
-			return e.limiter
-		}
-		lim := rate.NewLimiter(rate.Limit(rps), burst)
-		buckets[ip] = &entry{limiter: lim, lastSeen: time.Now()}
-		return lim
+	// sweep deletes entries idle longer than idleTimeout. Called from a
+	// goroutine so it never blocks the request hot path.
+	sweep := func() {
+		cutoff := now().Add(-idleTimeout).UnixNano()
+		buckets.Range(func(k, v any) bool {
+			if v.(*entry).lastSeen.Load() < cutoff {
+				buckets.Delete(k)
+			}
+			return true
+		})
+		lastSweep.Store(now().UnixNano())
+		opsSince.Store(0)
 	}
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip, _ := r.Context().Value(ClientIPKey).(string) //nolint:errcheck // context value is optional, fall back to GetRealIP below
+			ip, _ := r.Context().Value(ClientIPKey).(string) //nolint:errcheck
 			if ip == "" {
-				ip = GetRealIP(r)
+				ip = GetRealIP(r, nil)
 			}
 
-			// Opportunistic eviction. Cheap and bounds the map.
-			mu.Lock()
-			evictLocked := len(buckets) > 256
-			mu.Unlock()
-			if evictLocked {
-				mu.Lock()
-				evict()
-				mu.Unlock()
+			// Amortize eviction: every sweepEvery requests OR every 60s.
+			if opsSince.Add(1) >= sweepEvery || now().UnixNano()-lastSweep.Load() > int64(time.Minute) {
+				go sweep()
 			}
 
-			if !getLimiter(ip).Allow() {
+			actual, _ := buckets.LoadOrStore(ip, mkEntry())
+			e := actual.(*entry)
+			e.lastSeen.Store(now().UnixNano())
+
+			if !e.limiter.Allow() {
 				w.Header().Set("Retry-After", "1")
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusTooManyRequests)
-				_, _ = w.Write([]byte(`{"detail":"rate limit exceeded"}`)) //nolint:errcheck // response writer error cannot be handled at this point in the middleware chain
+				_, _ = w.Write([]byte(`{"detail":"rate limit exceeded"}`)) //nolint:errcheck
 				return
 			}
 

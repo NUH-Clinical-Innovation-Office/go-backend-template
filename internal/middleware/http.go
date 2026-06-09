@@ -35,19 +35,42 @@ func GenerateRequestID() string {
 }
 
 // GetRealIP extracts the real client IP from X-Forwarded-For, X-Real-IP,
-// or RemoteAddr. Port is stripped from RemoteAddr for consistency with
-// the proxy-header paths which contain only the host.
-func GetRealIP(r *http.Request) string {
-	if ip := r.Header.Get("X-Forwarded-For"); ip != "" {
-		parts := strings.Split(ip, ",")
-		return strings.TrimSpace(parts[0])
-	}
-	if ip := r.Header.Get("X-Real-IP"); ip != "" {
-		return ip
+// or RemoteAddr. Proxy headers are only honored when r.RemoteAddr falls
+// inside one of the trusted CIDRs (e.g. a load balancer). Port is
+// stripped from RemoteAddr for consistency with the proxy-header paths.
+func GetRealIP(r *http.Request, trustedProxies []net.IPNet) string {
+	remote := remoteHost(r.RemoteAddr)
+	if remote != "" && len(trustedProxies) > 0 {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err == nil {
+			remote = host
+		}
+		if ip := net.ParseIP(remote); ip != nil {
+			for _, cidr := range trustedProxies {
+				if cidr.Contains(ip) {
+					if h := r.Header.Get("X-Forwarded-For"); h != "" {
+						parts := strings.Split(h, ",")
+						return strings.TrimSpace(parts[0])
+					}
+					if h := r.Header.Get("X-Real-IP"); h != "" {
+						return h
+					}
+					return remote
+				}
+			}
+		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
+	}
+	return host
+}
+
+func remoteHost(remoteAddr string) string {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		return remoteAddr
 	}
 	return host
 }

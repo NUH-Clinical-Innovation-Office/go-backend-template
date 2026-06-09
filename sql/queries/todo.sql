@@ -31,6 +31,19 @@ SET title = $2, description = $3, is_completed = $4, due_date = $5, updated_at =
 WHERE id = $1
 RETURNING id, user_id, title, description, is_completed, due_date, created_at, updated_at;
 
+-- name: UpdateTodoPartial :one
+-- PATCH-style update. Any nil named arg preserves the existing column.
+-- The service layer is responsible for converting empty strings to nil.
+UPDATE todos
+SET
+    title        = COALESCE(sqlc.narg('title')::TEXT,         title),
+    description  = COALESCE(sqlc.narg('description')::TEXT,   description),
+    is_completed = COALESCE(sqlc.narg('is_completed')::BOOLEAN, is_completed),
+    due_date     = COALESCE(sqlc.narg('due_date')::TIMESTAMPTZ, due_date),
+    updated_at   = NOW()
+WHERE id = sqlc.arg('id')
+RETURNING id, user_id, title, description, is_completed, due_date, created_at, updated_at;
+
 -- name: DeleteTodo :exec
 DELETE FROM todos
 WHERE id = $1;

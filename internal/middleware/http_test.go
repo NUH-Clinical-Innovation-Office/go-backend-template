@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -21,23 +22,32 @@ func TestGenerateRequestID(t *testing.T) {
 }
 
 func TestGetRealIP(t *testing.T) {
-	t.Run("X-Forwarded-For header", func(t *testing.T) {
+	t.Run("X-Forwarded-For with trusted proxy", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("X-Forwarded-For", "192.168.1.1, 10.0.0.1")
-		ip := GetRealIP(req)
+		req.RemoteAddr = "10.0.0.1:1234"
+		ip := GetRealIP(req, []net.IPNet{{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 32)}})
 		assert.Equal(t, "192.168.1.1", ip)
 	})
 
-	t.Run("X-Real-IP header", func(t *testing.T) {
+	t.Run("X-Real-IP with trusted proxy", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/", nil)
 		req.Header.Set("X-Real-IP", "192.168.1.1")
-		ip := GetRealIP(req)
+		req.RemoteAddr = "10.0.0.1:1234"
+		ip := GetRealIP(req, []net.IPNet{{IP: net.ParseIP("10.0.0.0"), Mask: net.CIDRMask(8, 32)}})
 		assert.Equal(t, "192.168.1.1", ip)
+	})
+
+	t.Run("X-Forwarded-For ignored without trusted proxy", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		req.Header.Set("X-Forwarded-For", "192.168.1.1")
+		ip := GetRealIP(req, nil)
+		assert.NotEqual(t, "192.168.1.1", ip)
 	})
 
 	t.Run("no headers - use RemoteAddr", func(t *testing.T) {
 		req := httptest.NewRequest("GET", "/", nil)
-		ip := GetRealIP(req)
+		ip := GetRealIP(req, nil)
 		assert.NotEmpty(t, ip)
 	})
 }

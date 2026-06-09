@@ -23,80 +23,8 @@ var (
 	ErrFirstNameInvalid  = errors.New("first name contains invalid characters")
 )
 
-// Validator interface for request validation
-type Validator interface {
-	Validate() error
-}
-
-// RegisterRequestValidator validates registration requests
-type RegisterRequestValidator struct {
-	Email      string
-	Password   string
-	ApprovedID string
-}
-
-func (v *RegisterRequestValidator) Validate() error {
-	if err := ValidateEmail(v.Email); err != nil {
-		return err
-	}
-	if err := ValidatePassword(v.Password); err != nil {
-		return err
-	}
-	if v.ApprovedID == "" {
-		return errors.New("approved_id is required")
-	}
-	return nil
-}
-
-// LoginRequestValidator validates login requests
-type LoginRequestValidator struct {
-	Email    string
-	Password string
-}
-
-func (v *LoginRequestValidator) Validate() error {
-	if err := ValidateEmail(v.Email); err != nil {
-		return err
-	}
-	if v.Password == "" {
-		return ErrPasswordRequired
-	}
-	return nil
-}
-
-// CreateTodoRequestValidator validates todo creation requests
-type CreateTodoRequestValidator struct {
-	Title string
-}
-
-func (v *CreateTodoRequestValidator) Validate() error {
-	return ValidateTitle(v.Title)
-}
-
-// UpdateTodoRequestValidator validates todo update requests
-type UpdateTodoRequestValidator struct {
-	Title string
-}
-
-func (v *UpdateTodoRequestValidator) Validate() error {
-	return ValidateTitle(v.Title)
-}
-
-// ApprovedUserRequestValidator validates approved user creation requests
-type ApprovedUserRequestValidator struct {
-	Email     string
-	FirstName string
-}
-
-func (v *ApprovedUserRequestValidator) Validate() error {
-	if err := ValidateEmail(v.Email); err != nil {
-		return err
-	}
-	if err := ValidateFirstName(v.FirstName); err != nil {
-		return err
-	}
-	return nil
-}
+// Validator interface and the old struct-based validators are gone.
+// Free functions (ValidateRegister, ValidateLogin, etc.) replace them.
 
 // ValidateEmail checks email format. Uses net/mail.ParseAddress which
 // handles the RFC 5322 grammar; no second regex check is required.
@@ -173,6 +101,80 @@ func ValidateFirstName(firstName string) error {
 		if !unicode.IsLetter(r) && r != ' ' && r != '-' && r != '\'' {
 			return ErrFirstNameInvalid
 		}
+	}
+	return nil
+}
+
+// --- Request types (live next to their validator to keep changes local) ---
+
+// RegisterRequest is the create-account payload.
+type RegisterRequest struct {
+	Email      string `json:"email"`
+	Password   string `json:"password"`
+	ApprovedID string `json:"approved_id"`
+}
+
+// ValidateRegister validates a RegisterRequest.
+func ValidateRegister(r RegisterRequest) error {
+	if err := ValidateEmail(r.Email); err != nil {
+		return err
+	}
+	if err := ValidatePassword(r.Password); err != nil {
+		return err
+	}
+	if r.ApprovedID == "" {
+		return errors.New("approved_id is required")
+	}
+	return nil
+}
+
+// LoginRequest is the credential payload.
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+// ValidateLogin validates a LoginRequest.
+func ValidateLogin(r LoginRequest) error {
+	if err := ValidateEmail(r.Email); err != nil {
+		return err
+	}
+	if r.Password == "" {
+		return ErrPasswordRequired
+	}
+	return nil
+}
+
+// ValidateCreateTodoTitle validates the title field of a create-todo
+// payload. Handlers call this with req.Title directly to avoid carrying
+// a duplicate request type in both handler and validator packages.
+func ValidateCreateTodoTitle(title string) error {
+	return ValidateTitle(title)
+}
+
+// ValidateUpdateTodoTitle validates the optional title field of a
+// PATCH-todo payload. nil pointer is rejected (every PATCH must touch
+// title); non-nil pointer is checked for emptiness/length.
+func ValidateUpdateTodoTitle(title *string) error {
+	if title == nil {
+		return ErrTitleRequired
+	}
+	return ValidateTitle(*title)
+}
+
+// ApprovedUserRequest is the create-approved-user payload.
+type ApprovedUserRequest struct {
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+}
+
+// ValidateApprovedUser validates an ApprovedUserRequest.
+func ValidateApprovedUser(r ApprovedUserRequest) error {
+	if err := ValidateEmail(r.Email); err != nil {
+		return err
+	}
+	if err := ValidateFirstName(r.FirstName); err != nil {
+		return err
 	}
 	return nil
 }

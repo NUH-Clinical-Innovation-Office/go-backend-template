@@ -12,12 +12,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/your-org/go-backend-template/internal/logging"
-	"github.com/your-org/go-backend-template/internal/router"
 )
 
 func TestTodoCRUD(t *testing.T) {
-	pool, _, authService, _, todoService, _, authHandler, todoHandler := setupTestDeps(t)
+	pool, _, authService, _, _, _, authHandler, todoHandler := setupTestDeps(t)
 	defer pool.Close()
 
 	// Setup: create approved user and registered user
@@ -31,14 +29,7 @@ func TestTodoCRUD(t *testing.T) {
 	require.NoError(t, err)
 
 	// Setup router
-	logger, _ := logging.New("debug", "console")
-	r := router.New(&router.RouterConfig{
-		Logger:      logger,
-		AuthSvc:     authService,
-		AuthHandler: authHandler,
-		TodoHandler: todoHandler,
-		TodoService: todoService,
-	})
+	r := newTestRouter(authService, authHandler, todoHandler)
 
 	t.Run("create todo", func(t *testing.T) {
 		body := map[string]string{
@@ -181,7 +172,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "Updated title",
 			"is_completed": true,
 		}
-		updateReq := httptest.NewRequest(http.MethodPut, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
+		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -189,6 +180,36 @@ func TestTodoCRUD(t *testing.T) {
 
 		assert.Equal(t, http.StatusOK, w.Code)
 		assert.Contains(t, w.Body.String(), "Updated title")
+	})
+
+	t.Run("update todo preserves omitted field", func(t *testing.T) {
+		// Create a todo with description; then PATCH only the title; verify
+		// description is preserved (regression test for the PUT-wipes-fields bug).
+		createBody := map[string]interface{}{
+			"title":       "Original",
+			"description": "Keep me",
+		}
+		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq.Header.Set("Authorization", "Bearer "+token)
+		createW := httptest.NewRecorder()
+		r.ServeHTTP(createW, createReq)
+		require.Equal(t, http.StatusCreated, createW.Code)
+		var created map[string]interface{}
+		json.Unmarshal(createW.Body.Bytes(), &created)
+		todoID := created["id"].(string)
+
+		// PATCH with only the title — description should NOT be wiped.
+		patchBody := map[string]interface{}{"title": "Renamed"}
+		patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(patchBody)))
+		patchReq.Header.Set("Authorization", "Bearer "+token)
+		patchW := httptest.NewRecorder()
+		r.ServeHTTP(patchW, patchReq)
+		require.Equal(t, http.StatusOK, patchW.Code)
+
+		var patched map[string]interface{}
+		json.Unmarshal(patchW.Body.Bytes(), &patched)
+		assert.Equal(t, "Renamed", patched["title"])
+		assert.Equal(t, "Keep me", patched["description"])
 	})
 
 	t.Run("update todo with empty title", func(t *testing.T) {
@@ -208,7 +229,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "",
 			"is_completed": false,
 		}
-		updateReq := httptest.NewRequest(http.MethodPut, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
+		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -222,7 +243,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "Updated title",
 			"is_completed": true,
 		}
-		updateReq := httptest.NewRequest(http.MethodPut, "/api/v1/todos/00000000-0000-0000-0000-000000000099", bytes.NewReader(mustJSON(updateBody)))
+		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/00000000-0000-0000-0000-000000000099", bytes.NewReader(mustJSON(updateBody)))
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -344,7 +365,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "Hacked title",
 			"is_completed": true,
 		}
-		updateReq := httptest.NewRequest(http.MethodPut, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
+		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
 		updateReq.Header.Set("Authorization", "Bearer "+otherToken)
 		w := httptest.NewRecorder()
 
@@ -397,12 +418,7 @@ func TestAuthGetMe(t *testing.T) {
 	token, err := authService.Register(ctx, "me@example.com", "Password123", "00000000-0000-0000-0000-000000000011")
 	require.NoError(t, err)
 
-	logger, _ := logging.New("debug", "console")
-	r := router.New(&router.RouterConfig{
-		Logger:      logger,
-		AuthSvc:     authService,
-		AuthHandler: authHandler,
-	})
+	r := newTestRouter(authService, authHandler, nil)
 
 	t.Run("get current user", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)

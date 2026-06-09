@@ -3,10 +3,12 @@ package auth
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/your-org/go-backend-template/internal/domain"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -45,13 +47,19 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 	}
 
 	exists, err := s.repo.ApprovedUserExists(ctx, approvedUUID)
-	if err != nil || !exists {
+	if err != nil {
+		return "", err
+	}
+	if !exists {
 		return "", ErrUserNotFound
 	}
 
 	existing, err := s.repo.GetUserByEmail(ctx, email)
 	if err == nil && existing != nil {
 		return "", ErrUserAlreadyExists
+	}
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return "", err
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), s.bcryptCost)
@@ -69,11 +77,18 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 		return "", err
 	}
 
-	// Assign default user role. The role is seeded by the migration so a
-	// missing role here is treated as a no-op rather than a hard error.
-	userRole, err := s.repo.GetRoleByName(ctx, "user")
-	if err == nil && userRole != nil {
-		if assignErr := s.repo.AssignRoleToUser(ctx, user.ID, userRole.ID); assignErr != nil {
+	// Assign default user role from the process-startup cache. If the
+	// cache is empty (e.g. dev without migrations), look it up once.
+	roleID := DefaultUserRoleID()
+	if roleID == uuid.Nil {
+		userRole, rerr := s.repo.GetRoleByName(ctx, "user")
+		if rerr == nil && userRole != nil {
+			roleID = userRole.ID
+			SetDefaultUserRoleID(roleID)
+		}
+	}
+	if roleID != uuid.Nil {
+		if assignErr := s.repo.AssignRoleToUser(ctx, user.ID, roleID); assignErr != nil {
 			return "", assignErr
 		}
 	}
@@ -121,7 +136,10 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, er
 	return tokenString, nil
 }
 
-// GetUserFromToken validates a JWT token and returns the user
+// GetUserFromToken validates a JWT token and returns the user. The
+// user, role names, and approved_user link are fetched in a single
+// roundtrip; any DB error is propagated (fail-closed) so transient
+// failures do not silently downgrade the user to "no roles".
 func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*domain.User, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -151,26 +169,50 @@ func (s *Service) GetUserFromToken(ctx context.Context, tokenString string) (*do
 		return nil, ErrInvalidCredentials
 	}
 
-	user, err := s.repo.GetUserByID(ctx, id)
+	agg, err := s.repo.GetUserWithRolesAndApproved(ctx, id)
 	if err != nil {
-		return nil, ErrUserNotFound
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrUserNotFound
+		}
+		return nil, err
 	}
 
-	if !user.IsActive {
+	if !agg.User.IsActive {
 		return nil, ErrInvalidCredentials
 	}
 
-	roles, err := s.repo.GetUserRoles(ctx, user.ID)
-	if err != nil {
-		roles = []RoleRow{}
-	}
+	// Translate the aggregate into the cross-feature domain type.
+	return userToDomain(agg.User, agg.ApprovedUser, agg.RoleNames), nil
+}
 
-	approvedUser, err := s.repo.GetApprovedUserByID(ctx, user.ApprovedUserID)
-	if err != nil {
-		approvedUser = nil
+// userToDomain assembles a domain.User from the aggregate result. Inlined
+// here so callers do not need a separate mapper file for one call site.
+func userToDomain(user *UserRow, approved *ApprovedUserRow, roleNames []string) *domain.User {
+	domainRoles := make([]domain.Role, 0, len(roleNames))
+	for _, name := range roleNames {
+		domainRoles = append(domainRoles, domain.Role{Name: name})
 	}
-
-	return ToDomainUser(user, approvedUser, roles), nil
+	var approvedDomain *domain.ApprovedUser
+	if approved != nil {
+		approvedDomain = &domain.ApprovedUser{
+			ID:        approved.ID,
+			Email:     approved.Email,
+			FirstName: approved.FirstName,
+			CreatedBy: approved.CreatedBy,
+			CreatedAt: approved.CreatedAt,
+			UpdatedAt: approved.UpdatedAt,
+		}
+	}
+	return &domain.User{
+		ID:             user.ID,
+		ApprovedUserID: user.ApprovedUserID,
+		HashedPassword: user.PasswordHash,
+		IsActive:       user.IsActive,
+		CreatedAt:      user.CreatedAt,
+		UpdatedAt:      user.UpdatedAt,
+		Roles:          domainRoles,
+		ApprovedUser:   approvedDomain,
+	}
 }
 
 // ListApprovedUsers lists all approved users (admin only)

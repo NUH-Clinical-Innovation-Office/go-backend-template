@@ -124,18 +124,18 @@ func TestValidateFirstName(t *testing.T) {
 func TestRegisterRequestValidator(t *testing.T) {
 	tests := []struct {
 		name    string
-		req     *RegisterRequestValidator
+		req     RegisterRequest
 		wantErr bool
 	}{
-		{"valid request", &RegisterRequestValidator{Email: "test@example.com", Password: "Password1", ApprovedID: "uuid"}, false},
-		{"invalid email", &RegisterRequestValidator{Email: "invalid", Password: "Password1", ApprovedID: "uuid"}, true},
-		{"invalid password", &RegisterRequestValidator{Email: "test@example.com", Password: "weak", ApprovedID: "uuid"}, true},
-		{"missing approved_id", &RegisterRequestValidator{Email: "test@example.com", Password: "Password1", ApprovedID: ""}, true},
+		{"valid request", RegisterRequest{Email: "test@example.com", Password: "Password1", ApprovedID: "uuid"}, false},
+		{"invalid email", RegisterRequest{Email: "invalid", Password: "Password1", ApprovedID: "uuid"}, true},
+		{"invalid password", RegisterRequest{Email: "test@example.com", Password: "weak", ApprovedID: "uuid"}, true},
+		{"missing approved_id", RegisterRequest{Email: "test@example.com", Password: "Password1", ApprovedID: ""}, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.req.Validate()
+			err := ValidateRegister(tt.req)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -148,17 +148,17 @@ func TestRegisterRequestValidator(t *testing.T) {
 func TestLoginRequestValidator(t *testing.T) {
 	tests := []struct {
 		name    string
-		req     *LoginRequestValidator
+		req     LoginRequest
 		wantErr bool
 	}{
-		{"valid request", &LoginRequestValidator{Email: "test@example.com", Password: "Password1"}, false},
-		{"invalid email", &LoginRequestValidator{Email: "invalid", Password: "Password1"}, true},
-		{"missing password", &LoginRequestValidator{Email: "test@example.com", Password: ""}, true},
+		{"valid request", LoginRequest{Email: "test@example.com", Password: "Password1"}, false},
+		{"invalid email", LoginRequest{Email: "invalid", Password: "Password1"}, true},
+		{"missing password", LoginRequest{Email: "test@example.com", Password: ""}, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.req.Validate()
+			err := ValidateLogin(tt.req)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -171,17 +171,17 @@ func TestLoginRequestValidator(t *testing.T) {
 func TestCreateTodoRequestValidator(t *testing.T) {
 	tests := []struct {
 		name    string
-		req     *CreateTodoRequestValidator
+		title   string
 		wantErr bool
 	}{
-		{"valid request", &CreateTodoRequestValidator{Title: "My Todo"}, false},
-		{"empty title", &CreateTodoRequestValidator{Title: ""}, true},
-		{"whitespace title", &CreateTodoRequestValidator{Title: "   "}, true},
+		{"valid request", "My Todo", false},
+		{"empty title", "", true},
+		{"whitespace title", "   ", true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.req.Validate()
+			err := ValidateCreateTodoTitle(tt.title)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {
@@ -194,19 +194,19 @@ func TestCreateTodoRequestValidator(t *testing.T) {
 func TestApprovedUserRequestValidator(t *testing.T) {
 	tests := []struct {
 		name    string
-		req     *ApprovedUserRequestValidator
+		req     ApprovedUserRequest
 		wantErr bool
 	}{
-		{"valid request", &ApprovedUserRequestValidator{Email: "test@example.com", FirstName: "John"}, false},
-		{"invalid email", &ApprovedUserRequestValidator{Email: "invalid", FirstName: "John"}, true},
-		{"invalid name", &ApprovedUserRequestValidator{Email: "test@example.com", FirstName: "John1"}, true},
-		{"empty email", &ApprovedUserRequestValidator{Email: "", FirstName: "John"}, true},
-		{"empty name", &ApprovedUserRequestValidator{Email: "test@example.com", FirstName: ""}, true},
+		{"valid request", ApprovedUserRequest{Email: "test@example.com", FirstName: "John"}, false},
+		{"invalid email", ApprovedUserRequest{Email: "invalid", FirstName: "John"}, true},
+		{"invalid name", ApprovedUserRequest{Email: "test@example.com", FirstName: "John1"}, true},
+		{"empty email", ApprovedUserRequest{Email: "", FirstName: "John"}, true},
+		{"empty name", ApprovedUserRequest{Email: "test@example.com", FirstName: ""}, true},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := tt.req.Validate()
+			err := ValidateApprovedUser(tt.req)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

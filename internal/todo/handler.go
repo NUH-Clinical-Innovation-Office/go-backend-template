@@ -2,12 +2,10 @@
 package todo
 
 import (
-	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"github.com/your-org/go-backend-template/internal/domain"
 	http2 "github.com/your-org/go-backend-template/internal/http"
 	"github.com/your-org/go-backend-template/internal/middleware"
@@ -21,11 +19,12 @@ type CreateTodoRequest struct {
 	DueDate     *string `json:"due_date"`
 }
 
-// UpdateTodoRequest represents an update todo request
+// UpdateTodoRequest represents a PATCH update request. All fields are
+// optional; nil pointer fields preserve the existing column.
 type UpdateTodoRequest struct {
-	Title       string  `json:"title"`
+	Title       *string `json:"title"`
 	Description *string `json:"description"`
-	IsCompleted bool    `json:"is_completed"`
+	IsCompleted *bool   `json:"is_completed"`
 	DueDate     *string `json:"due_date"`
 }
 
@@ -105,27 +104,24 @@ func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req CreateTodoRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := http2.DecodeJSON(w, r, 1<<20, &req); err != nil {
+		if errors.Is(err, http2.ErrBodyTooLarge) {
+			http2.RespondError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
 		http2.RespondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	v := &validator.CreateTodoRequestValidator{
-		Title: req.Title,
-	}
-	if validateErr := v.Validate(); validateErr != nil {
-		http2.RespondError(w, http.StatusBadRequest, validateErr.Error())
+	if err := validator.ValidateCreateTodoTitle(req.Title); err != nil {
+		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	var dueDate *time.Time
-	if req.DueDate != nil && *req.DueDate != "" {
-		t, parseErr := time.Parse(time.RFC3339, *req.DueDate)
-		if parseErr != nil {
-			http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
-			return
-		}
-		dueDate = &t
+	dueDate, err := http2.ParseDueDate(req.DueDate)
+	if err != nil {
+		http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
+		return
 	}
 
 	todo, err := h.svc.Create(r.Context(), user.ID, req.Title, req.Description, dueDate)
@@ -157,15 +153,9 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := chi.URLParam(r, "id")
-	if idStr == "" {
-		http2.RespondError(w, http.StatusBadRequest, "id is required")
-		return
-	}
-
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid id format")
+	id, ok := http2.ParseUUIDParam(r, "id")
+	if !ok {
+		http2.RespondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
@@ -196,7 +186,7 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure      401 {object} http.ErrorResponse
 // @Failure      404 {object} http.ErrorResponse
 // @Failure      500 {object} http.ErrorResponse
-// @Router       /todos/{id} [put]
+// @Router       /todos/{id} [patch]
 func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
@@ -204,40 +194,31 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := chi.URLParam(r, "id")
-	if idStr == "" {
-		http2.RespondError(w, http.StatusBadRequest, "id is required")
-		return
-	}
-
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid id format")
+	id, ok := http2.ParseUUIDParam(r, "id")
+	if !ok {
+		http2.RespondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
 	var req UpdateTodoRequest
-	if decodeErr := json.NewDecoder(r.Body).Decode(&req); decodeErr != nil {
+	if err := http2.DecodeJSON(w, r, 1<<20, &req); err != nil {
+		if errors.Is(err, http2.ErrBodyTooLarge) {
+			http2.RespondError(w, http.StatusRequestEntityTooLarge, "request body too large")
+			return
+		}
 		http2.RespondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	v := &validator.UpdateTodoRequestValidator{
-		Title: req.Title,
-	}
-	if validateErr := v.Validate(); validateErr != nil {
-		http2.RespondError(w, http.StatusBadRequest, validateErr.Error())
+	if err := validator.ValidateUpdateTodoTitle(req.Title); err != nil {
+		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	var dueDate *time.Time
-	if req.DueDate != nil && *req.DueDate != "" {
-		t, parseErr := time.Parse(time.RFC3339, *req.DueDate)
-		if parseErr != nil {
-			http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
-			return
-		}
-		dueDate = &t
+	dueDate, err := http2.ParseDueDate(req.DueDate)
+	if err != nil {
+		http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
+		return
 	}
 
 	todo, err := h.svc.Update(r.Context(), id, user.ID, req.Title, req.Description, req.IsCompleted, dueDate)
@@ -272,19 +253,13 @@ func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	idStr := chi.URLParam(r, "id")
-	if idStr == "" {
-		http2.RespondError(w, http.StatusBadRequest, "id is required")
+	id, ok := http2.ParseUUIDParam(r, "id")
+	if !ok {
+		http2.RespondError(w, http.StatusBadRequest, "invalid id")
 		return
 	}
 
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid id format")
-		return
-	}
-
-	err = h.svc.Delete(r.Context(), id, user.ID)
+	err := h.svc.Delete(r.Context(), id, user.ID)
 	if err != nil {
 		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")

@@ -58,11 +58,13 @@ func run() error {
 
 	logger.Info("starting go-backend-template API")
 
-	// Initialize OpenTelemetry tracing
+	// Initialize OpenTelemetry tracing. Export timeout = shutdown
+	// timeout minus 1s so the batch export can complete inside Shutdown.
 	tracerProvider, err := observability.Setup(
 		context.Background(),
 		cfg.Observability.ServiceName,
 		cfg.Observability.OTLPInsecure,
+		cfg.Server.ShutdownTimeout-time.Second,
 		logger,
 	)
 	if err != nil {
@@ -94,6 +96,9 @@ func run() error {
 
 	// Initialize auth repository and service
 	authRepo := auth.NewRepository(queries)
+	if err := auth.InitDefaultRoles(ctx, authRepo); err != nil {
+		logger.Warn("default role cache not populated (migrations may be missing); Register will lazy-load on first call", zap.Error(err))
+	}
 	authService := auth.NewService(authRepo, cfg.Auth.JWTSecretKey, time.Duration(cfg.Auth.JWTExpireMinutes)*time.Minute, cfg.Auth.BcryptCost)
 	authHandler := auth.NewHandler(authService, authService, logger)
 
@@ -109,19 +114,18 @@ func run() error {
 	}
 
 	// Build router with all dependencies
-	routerConfig := router.RouterConfig{
-		Logger:         logger,
-		Tracer:         tracer,
-		AuthSvc:        authService,
-		TodoService:    todoService,
-		AuthHandler:    authHandler,
-		TodoHandler:    todoHandler,
-		CORS:           cfg.CORS,
-		RateLimit:      cfg.RateLimit,
-		CheckDBHealth:  func() error { return pool.Ping(context.Background()) },
-		SwaggerEnabled: cfg.Swagger.Enabled,
-	}
-	mux := router.New(&routerConfig)
+	mux := router.New(
+		logger,
+		tracer,
+		authService,
+		authHandler,
+		todoHandler,
+		cfg.CORS,
+		cfg.RateLimit,
+		func() error { return pool.Ping(context.Background()) },
+		cfg.Swagger.Enabled,
+		cfg.Server.TrustedProxies,
+	)
 
 	// Start HTTP server
 	return startHTTPServer(cfg, mux, logger)

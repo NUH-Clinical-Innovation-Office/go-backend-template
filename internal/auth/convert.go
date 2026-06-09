@@ -103,3 +103,44 @@ func (in BulkApprovedUserInput) toCreateParams() db.CreateApprovedUsersBulkParam
 		Column3: createdBy,
 	}
 }
+
+// userRowFromAggregate converts the single-query aggregate result into
+// a UserRow. Always non-nil for a non-nil aggregate row.
+func userRowFromAggregate(r *db.GetUserWithRolesAndApprovedRow) *UserRow {
+	if r == nil {
+		return nil
+	}
+	return &UserRow{
+		ID:             dbutil.PgUUIDToValue(r.ID),
+		ApprovedUserID: dbutil.PgUUIDToValue(r.ApprovedUserID),
+		Email:          r.Email,
+		PasswordHash:   r.PasswordHash,
+		IsActive:       r.IsActive,
+		CreatedAt:      r.CreatedAt.Time,
+		UpdatedAt:      r.UpdatedAt.Time,
+	}
+}
+
+// approvedUserRowFromAggregate extracts the LEFT JOINed approved_user
+// from the aggregate row. Returns nil when no approved_user is linked
+// (the join's nullable columns are all zero values).
+func approvedUserRowFromAggregate(r *db.GetUserWithRolesAndApprovedRow) *ApprovedUserRow {
+	if r == nil || !r.ApprovedID.Valid {
+		return nil
+	}
+	return &ApprovedUserRow{
+		ID:        dbutil.PgUUIDToValue(r.ApprovedID),
+		Email:     derefStr(r.ApprovedEmail),
+		FirstName: derefStr(r.ApprovedFirstName),
+		CreatedBy: dbutil.PgUUIDToPtr(r.ApprovedCreatedBy),
+		CreatedAt: r.ApprovedCreatedAt.Time,
+		UpdatedAt: r.ApprovedUpdatedAt.Time,
+	}
+}
+
+func derefStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}

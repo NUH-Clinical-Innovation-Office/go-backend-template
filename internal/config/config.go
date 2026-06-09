@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -29,6 +30,7 @@ type ServerConfig struct {
 	WriteTimeout    time.Duration
 	IdleTimeout     time.Duration
 	ShutdownTimeout time.Duration
+	TrustedProxies  []net.IPNet
 }
 
 // DatabaseConfig contains database connection settings
@@ -95,6 +97,7 @@ func Load() (*Config, error) {
 			WriteTimeout:    p.duration("SERVER_WRITE_TIMEOUT", 30*time.Second),
 			IdleTimeout:     p.duration("SERVER_IDLE_TIMEOUT", 120*time.Second),
 			ShutdownTimeout: p.duration("SERVER_SHUTDOWN_TIMEOUT", 10*time.Second),
+			TrustedProxies:  parseTrustedProxies(getEnv("TRUSTED_PROXIES", "")),
 		},
 		Database: DatabaseConfig{
 			URL:             getEnv("DATABASE_URL", ""),
@@ -204,10 +207,44 @@ func (c *Config) Validate() error {
 	if c.Auth.JWTSecretKey == "" {
 		return fmt.Errorf("JWT_SECRET_KEY is required")
 	}
+	if len(c.Auth.JWTSecretKey) < 32 {
+		return fmt.Errorf("JWT_SECRET_KEY must be at least 32 bytes (got %d); use a long random secret in production", len(c.Auth.JWTSecretKey))
+	}
 	if c.Server.Port < 1 || c.Server.Port > 65535 {
 		return fmt.Errorf("invalid SERVER_PORT: %d", c.Server.Port)
 	}
+	if c.CORS.AllowCredentials {
+		for _, o := range c.CORS.AllowedOrigins {
+			if o == "*" {
+				return fmt.Errorf("CORS_ALLOWED_ORIGINS cannot contain '*' when CORS_ALLOW_CREDENTIALS=true (CORS spec forbids the combination)")
+			}
+		}
+	}
 	return nil
+}
+
+// parseTrustedProxies splits a comma-separated list of CIDRs into
+// []*net.IPNet. Empty input returns nil. Invalid entries are silently
+// dropped (operator can spot the empty list and fix the env).
+func parseTrustedProxies(raw string) []net.IPNet {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]net.IPNet, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		_, n, err := net.ParseCIDR(p)
+		if err != nil {
+			continue
+		}
+		out = append(out, *n)
+	}
+	return out
 }
 
 func getEnv(key, defaultValue string) string {

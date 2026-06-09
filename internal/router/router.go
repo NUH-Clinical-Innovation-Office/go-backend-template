@@ -3,6 +3,8 @@ package router
 
 import (
 	"context"
+	"encoding/json"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -22,40 +24,51 @@ import (
 	_ "github.com/your-org/go-backend-template/docs/swagger" // generated swagger docs
 )
 
-// RouterConfig holds dependencies for router setup
-type RouterConfig struct {
-	Logger         *zap.Logger
-	Tracer         trace.Tracer
-	AuthSvc        appmiddleware.AuthProvider
-	TodoService    todo.TodoService
-	AuthHandler    *auth.Handler
-	TodoHandler    *todo.Handler
-	CORS           config.CORSConfig
-	RateLimit      config.RateLimitConfig
-	CheckDBHealth  func() error
-	SwaggerEnabled bool
+// HealthResponse is the JSON shape returned by /health. The Database
+// field is omitempty so a future health check that does not depend on
+// a database (e.g. a sidecar liveness probe) can omit it cleanly.
+type HealthResponse struct {
+	Status   string `json:"status"`
+	Database string `json:"database,omitempty"`
 }
 
-// New creates a new Chi router with all middleware and routes configured
-func New(cfg *RouterConfig) *chi.Mux {
+// New creates a new Chi router with all middleware and routes configured.
+//
+// Middleware layout:
+//   - Root stack: requestID, realIP, logger, Recoverer, securityHeaders, CORS.
+//   - /api/v1 group: + 30s timeout + per-IP rate limit.
+//
+// /health and /swagger intentionally stay on the root group so they are
+// never rate-limited or subject to the API timeout. CORS is still
+// applied so a browser can hit /health from a different origin.
+func New(
+	logger *zap.Logger,
+	tracer trace.Tracer,
+	authSvc appmiddleware.AuthProvider,
+	authHandler *auth.Handler,
+	todoHandler *todo.Handler,
+	corsCfg config.CORSConfig,
+	rateLimitCfg config.RateLimitConfig,
+	checkDBHealth func() error,
+	swaggerEnabled bool,
+	trustedProxies []net.IPNet,
+) *chi.Mux {
 	r := chi.NewMux()
 
-	// Global middleware stack (applied to all routes)
 	r.Use(
 		requestIDMiddleware(),
-		realIPMiddleware(),
-		loggerMiddleware(cfg.Logger),
+		realIPMiddleware(trustedProxies),
+		loggerMiddleware(logger),
 		chimiddleware.Recoverer,
-		timeoutMiddleware(30*time.Second),
-		corsMiddleware(&cfg.CORS),
-		rateLimitMiddleware(cfg.RateLimit),
+		appmiddleware.SecurityHeaders,
+		corsMiddleware(&corsCfg),
 	)
 
-	// Public routes
+	// Public root routes (not rate-limited, not under the API timeout).
 	r.Get("/", rootHandler())
-	r.Get("/health", healthHandlerWithDB(cfg.CheckDBHealth))
+	r.Get("/health", healthHandlerWithDB(checkDBHealth))
 
-	if cfg.SwaggerEnabled {
+	if swaggerEnabled {
 		r.Get("/swagger", func(w http.ResponseWriter, r *http.Request) {
 			http.Redirect(w, r, r.RequestURI+"/", http.StatusMovedPermanently)
 		})
@@ -64,43 +77,46 @@ func New(cfg *RouterConfig) *chi.Mux {
 		))
 	}
 
-	// API routes
+	// API routes: timeouts + per-IP rate limit.
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(
+			timeoutMiddleware(30*time.Second),
+			rateLimitMiddleware(rateLimitCfg),
+		)
+
 		// Public endpoints
-		r.Post("/auth/register", cfg.AuthHandler.RegisterHandler)
-		r.Post("/auth/login", cfg.AuthHandler.LoginHandler)
+		r.Post("/auth/register", authHandler.RegisterHandler)
+		r.Post("/auth/login", authHandler.LoginHandler)
 
 		// Protected endpoints (require authentication)
 		r.Group(func(r chi.Router) {
-			r.Use(appmiddleware.RequireAuth(cfg.AuthSvc))
+			r.Use(appmiddleware.RequireAuth(authSvc))
 
-			// User-scoped todo routes
 			r.Route("/todos", func(r chi.Router) {
-				r.Get("/", cfg.TodoHandler.ListHandler)
-				r.Post("/", cfg.TodoHandler.CreateHandler)
-				r.Get("/{id}", cfg.TodoHandler.GetHandler)
-				r.Put("/{id}", cfg.TodoHandler.UpdateHandler)
-				r.Delete("/{id}", cfg.TodoHandler.DeleteHandler)
+				r.Get("/", todoHandler.ListHandler)
+				r.Post("/", todoHandler.CreateHandler)
+				r.Get("/{id}", todoHandler.GetHandler)
+				r.Patch("/{id}", todoHandler.UpdateHandler)
+				r.Delete("/{id}", todoHandler.DeleteHandler)
 			})
 
-			// User profile routes
-			r.Get("/me", cfg.AuthHandler.GetMeHandler)
+			r.Get("/me", authHandler.GetMeHandler)
 		})
 
 		// Admin-only endpoints
 		r.Group(func(r chi.Router) {
-			r.Use(appmiddleware.RequireAdmin(cfg.AuthSvc))
+			r.Use(appmiddleware.RequireAdmin(authSvc))
 
-			// Approved users management
 			r.Route("/admin/approved-users", func(r chi.Router) {
-				r.Get("/", cfg.AuthHandler.ListApprovedUsersHandler)
-				r.Post("/", cfg.AuthHandler.CreateApprovedUserHandler)
-				r.Post("/bulk", cfg.AuthHandler.BulkCreateApprovedUsersHandler)
-				r.Delete("/{id}", cfg.AuthHandler.DeleteApprovedUserHandler)
+				r.Get("/", authHandler.ListApprovedUsersHandler)
+				r.Post("/", authHandler.CreateApprovedUserHandler)
+				r.Post("/bulk", authHandler.BulkCreateApprovedUsersHandler)
+				r.Delete("/{id}", authHandler.DeleteApprovedUserHandler)
 			})
 		})
 	})
 
+	_ = tracer // reserved for future OTel middleware; currently a no-op
 	return r
 }
 
@@ -108,10 +124,10 @@ func New(cfg *RouterConfig) *chi.Mux {
 func rootHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"version":"1.0.0","status":"running"}`)); err != nil {
-			http.Error(w, "failed to write response", http.StatusInternalServerError)
-		}
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"version": "1.0.0",
+			"status":  "running",
+		})
 	}
 }
 
@@ -120,29 +136,21 @@ func healthHandlerWithDB(checkDB func() error) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 
-		type HealthStatus struct {
-			Status   string `json:"status"`
-			Database string `json:"database,omitempty"`
-		}
-
-		status := HealthStatus{Status: "healthy"}
+		resp := HealthResponse{Status: "healthy"}
+		code := http.StatusOK
 
 		if checkDB != nil {
 			if err := checkDB(); err != nil {
-				status.Status = "unhealthy"
-				status.Database = "disconnected"
-				w.WriteHeader(http.StatusServiceUnavailable)
+				resp.Status = "unhealthy"
+				resp.Database = "disconnected"
+				code = http.StatusServiceUnavailable
 			} else {
-				status.Database = "connected"
-				w.WriteHeader(http.StatusOK)
+				resp.Database = "connected"
 			}
-		} else {
-			w.WriteHeader(http.StatusOK)
 		}
 
-		if _, err := w.Write([]byte(`{"status":"` + status.Status + `"}`)); err != nil {
-			http.Error(w, "failed to write response", http.StatusInternalServerError)
-		}
+		w.WriteHeader(code)
+		_ = json.NewEncoder(w).Encode(resp)
 	}
 }
 
@@ -158,11 +166,12 @@ func requestIDMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// realIPMiddleware extracts the real client IP from X-Forwarded-For or X-Real-IP headers
-func realIPMiddleware() func(http.Handler) http.Handler {
+// realIPMiddleware extracts the real client IP, honoring TrustedProxies
+// when deciding whether to consult X-Forwarded-For.
+func realIPMiddleware(trusted []net.IPNet) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			ip := appmiddleware.GetRealIP(r)
+			ip := appmiddleware.GetRealIP(r, trusted)
 			ctx := context.WithValue(r.Context(), appmiddleware.ClientIPKey, ip)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -174,23 +183,13 @@ func loggerMiddleware(logger *zap.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-
-			// Add trace context to logger
 			log := logging.WithTraceContext(ctx, logger)
-
-			// Log request start
 			log.Debug("request started",
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
 			)
-
-			// Wrap response writer to capture status code
 			wrapped := &responseWriter{ResponseWriter: w, status: http.StatusOK}
-
 			next.ServeHTTP(wrapped, r)
-
-			// Log request completion (same logger instance as start so trace
-			// context stays consistent across the request lifecycle)
 			log.Debug("request completed",
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
@@ -206,21 +205,22 @@ func timeoutMiddleware(timeout time.Duration) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			ctx, cancel := context.WithTimeout(r.Context(), timeout)
 			defer cancel()
-
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-// corsMiddleware handles Cross-Origin Resource Sharing with configurable options.
-// When an origin is in the allow list, it is echoed back. Otherwise "*" is set
-// without credentials. Methods, headers, and max-age are read from the supplied
-// CORSConfig so operators can tune them per environment.
+// corsMiddleware handles Cross-Origin Resource Sharing. The middleware
+// always sets Vary: Origin so caches do not mix credentialed responses
+// across origins. When AllowCredentials is true, the wildcard origin
+// is rejected (CORS spec disallows it). When the origin is not in
+// the allow list, no Access-Control-Allow-Origin is set and the
+// preflight is rejected with 403.
 func corsMiddleware(corsCfg *config.CORSConfig) func(http.Handler) http.Handler {
 	methods := strings.Join(corsCfg.AllowedMethods, ", ")
 	headers := strings.Join(corsCfg.AllowedHeaders, ", ")
 	if methods == "" {
-		methods = "GET, POST, PUT, DELETE, OPTIONS"
+		methods = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
 	}
 	if headers == "" {
 		headers = "Accept, Authorization, Content-Type"
@@ -232,38 +232,43 @@ func corsMiddleware(corsCfg *config.CORSConfig) func(http.Handler) http.Handler 
 
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Add("Vary", "Origin")
 			origin := r.Header.Get("Origin")
 			valid := isValidOrigin(origin, corsCfg.AllowedOrigins)
+
 			if valid {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				if corsCfg.AllowCredentials {
 					w.Header().Set("Access-Control-Allow-Credentials", "true")
 				}
-			} else {
-				w.Header().Set("Access-Control-Allow-Origin", "*")
 			}
 			w.Header().Set("Access-Control-Allow-Methods", methods)
 			w.Header().Set("Access-Control-Allow-Headers", headers)
 			w.Header().Set("Access-Control-Max-Age", strconv.Itoa(maxAge))
 
 			if r.Method == http.MethodOptions {
+				if !valid {
+					w.WriteHeader(http.StatusForbidden)
+					return
+				}
 				w.WriteHeader(http.StatusNoContent)
 				return
 			}
-
 			next.ServeHTTP(w, r)
 		})
 	}
 }
 
-// isValidOrigin checks if the origin is in the allowed list. The "*" entry
-// matches any origin; otherwise exact match is required.
+// isValidOrigin checks if the origin is in the allowed list. Exact
+// match only; the "*" entry is no longer accepted here (it must be
+// the sole entry AND AllowCredentials must be false; that case is
+// filtered out by config.Validate at startup).
 func isValidOrigin(origin string, allowedOrigins []string) bool {
 	if origin == "" {
 		return false
 	}
 	for _, allowed := range allowedOrigins {
-		if allowed == "*" || allowed == origin {
+		if allowed == origin {
 			return true
 		}
 	}
@@ -290,7 +295,6 @@ func rateLimitMiddleware(cfg config.RateLimitConfig) func(http.Handler) http.Han
 	}
 	ratePerSec := float64(cfg.Requests) / float64(cfg.Duration.Seconds())
 	if ratePerSec < 1 {
-		// For windows > 1s, treat the whole window as the bucket.
 		ratePerSec = 1
 	}
 	burst := cfg.Requests
