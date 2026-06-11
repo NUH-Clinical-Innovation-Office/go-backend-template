@@ -78,14 +78,17 @@ func (q *Queries) CreateApprovedUsersBulk(ctx context.Context, arg CreateApprove
 	return items, nil
 }
 
-const deleteApprovedUser = `-- name: DeleteApprovedUser :exec
+const deleteApprovedUser = `-- name: DeleteApprovedUser :execrows
 DELETE FROM approved_users
 WHERE id = $1
 `
 
-func (q *Queries) DeleteApprovedUser(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteApprovedUser, id)
-	return err
+func (q *Queries) DeleteApprovedUser(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteApprovedUser, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getApprovedUserByEmail = `-- name: GetApprovedUserByEmail :one

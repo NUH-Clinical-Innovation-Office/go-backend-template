@@ -29,7 +29,7 @@ func newTestRouter(authSvc *auth.Service, authHandler *auth.Handler, todoHandler
 		authSvc,
 		authHandler,
 		todoHandler,
-		config.CORSConfig{},
+		&config.CORSConfig{},
 		config.RateLimitConfig{Requests: 0}, // disabled
 		func() error { return nil },
 		false,
@@ -477,8 +477,8 @@ func TestAdminApprovedUsers(t *testing.T) {
 	t.Run("bulk create approved users", func(t *testing.T) {
 		body := map[string]interface{}{
 			"users": []map[string]string{
-				{"email": "bulk1@example.com", "first_name": "Bulk1"},
-				{"email": "bulk2@example.com", "first_name": "Bulk2"},
+				{"email": "bulk1@example.com", "first_name": "BulkOne"},
+				{"email": "bulk2@example.com", "first_name": "BulkTwo"},
 			},
 		}
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users/bulk", bytes.NewReader(mustJSON(body)))
@@ -515,7 +515,6 @@ func TestAdminApprovedUsers(t *testing.T) {
 
 		r.ServeHTTP(w, req)
 
-		// Bulk create doesn't validate emails - returns 500 on DB error
-		assert.True(t, w.Code == http.StatusBadRequest || w.Code == http.StatusInternalServerError)
+		assert.Equal(t, http.StatusBadRequest, w.Code)
 	})
 }

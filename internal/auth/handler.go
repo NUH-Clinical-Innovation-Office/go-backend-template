@@ -351,6 +351,16 @@ func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
+	for _, u := range req.Users {
+		if err := validator.ValidateApprovedUser(validator.ApprovedUserRequest{
+			Email:     u.Email,
+			FirstName: u.FirstName,
+		}); err != nil {
+			http2.RespondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+	}
+
 	// Get creator from context
 	creator := middleware.UserFromContext(r.Context())
 	if creator == nil {

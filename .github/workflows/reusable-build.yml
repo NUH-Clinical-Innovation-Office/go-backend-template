@@ -4,26 +4,8 @@ on:
   workflow_call: {}
 
 jobs:
-  setup:
-    name: Setup Dependencies
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Download dependencies
-        run: go mod download
-
   lint:
     name: Lint
-    needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -59,7 +41,6 @@ jobs:
 
   test:
     name: Test
-    needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -78,18 +59,10 @@ jobs:
           swag init --parseInternal -g cmd/api/main.go -o docs/swagger
 
       - name: Run tests
-        run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
-
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
-        with:
-          file: ./coverage.out
-          flags: unittests
-          name: codecov-umbrella
+        run: go test -v -race ./...
 
   build:
     name: Build
-    needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -112,7 +85,6 @@ jobs:
 
   security-scan:
     name: Security Scan (Source)
-    needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

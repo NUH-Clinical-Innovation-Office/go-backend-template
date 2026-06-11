@@ -131,8 +131,12 @@ func (r *Repository) BulkCreateApprovedUsers(ctx context.Context, in BulkApprove
 // ErrApprovedUserNotFound when no row matched the id, so callers can
 // surface 404 instead of silently succeeding.
 func (r *Repository) DeleteApprovedUser(ctx context.Context, id uuid.UUID) error {
-	if err := r.db.DeleteApprovedUser(ctx, dbutil.UUIDToPgtypeValue(id)); err != nil {
+	rows, err := r.db.DeleteApprovedUser(ctx, dbutil.UUIDToPgtypeValue(id))
+	if err != nil {
 		return err
+	}
+	if rows == 0 {
+		return ErrApprovedUserNotFound
 	}
 	return nil
 }
@@ -154,10 +158,7 @@ func (r *Repository) GetUserWithRolesAndApproved(ctx context.Context, id uuid.UU
 		return nil, err
 	}
 	user := userRowFromAggregate(&row)
-	roles, ok := row.RoleNames.([]string)
-	if !ok {
-		roles = nil
-	}
+	roles := roleNamesFromAggregate(row.RoleNames)
 	return &UserWithContext{
 		User:         user,
 		RoleNames:    roles,

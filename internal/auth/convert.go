@@ -144,3 +144,20 @@ func derefStr(s *string) string {
 	}
 	return *s
 }
+
+// roleNamesFromAggregate converts the array_agg result (decoded by pgx
+// as []any since the destination type is any) into
+// []string.
+func roleNamesFromAggregate(v any) []string {
+	raw, ok := v.([]any)
+	if !ok {
+		return nil
+	}
+	roles := make([]string, 0, len(raw))
+	for _, r := range raw {
+		if name, ok := r.(string); ok {
+			roles = append(roles, name)
+		}
+	}
+	return roles
+}

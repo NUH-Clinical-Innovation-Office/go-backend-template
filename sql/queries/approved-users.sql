@@ -25,6 +25,6 @@ SELECT unnest($1::TEXT[]) AS email,
        unnest($3::UUID[]) AS created_by
 RETURNING id, email, first_name, created_by, created_at, updated_at;
 
--- name: DeleteApprovedUser :exec
+-- name: DeleteApprovedUser :execrows
 DELETE FROM approved_users
 WHERE id = $1;
