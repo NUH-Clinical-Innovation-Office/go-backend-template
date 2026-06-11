@@ -36,6 +36,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Generate swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          swag init --parseInternal -g cmd/api/main.go -o docs/swagger
+
       - name: Check gofmt
         run: |
           if [ -n "$(gofmt -l .)" ]; then
@@ -67,6 +72,11 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Generate swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          swag init --parseInternal -g cmd/api/main.go -o docs/swagger
+
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
@@ -91,6 +101,11 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
+
+      - name: Generate swagger docs
+        run: |
+          go install github.com/swaggo/swag/cmd/swag@v1.16.6
+          swag init --parseInternal -g cmd/api/main.go -o docs/swagger
 
       - name: Build binary
         run: go build -v -o bin/go-backend-template ./cmd/api
