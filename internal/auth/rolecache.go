@@ -36,7 +36,9 @@ func InitDefaultRoles(ctx context.Context, repo UserRepository) error {
 // by performing a one-shot lookup and re-priming the cache.
 func DefaultUserRoleID() uuid.UUID {
 	if v := defaultUserRoleID.Load(); v != nil {
-		return v.(uuid.UUID)
+		if id, ok := v.(uuid.UUID); ok {
+			return id
+		}
 	}
 	return uuid.Nil
 }

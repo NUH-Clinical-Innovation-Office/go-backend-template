@@ -77,20 +77,8 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 		return "", err
 	}
 
-	// Assign default user role from the process-startup cache. If the
-	// cache is empty (e.g. dev without migrations), look it up once.
-	roleID := DefaultUserRoleID()
-	if roleID == uuid.Nil {
-		userRole, rerr := s.repo.GetRoleByName(ctx, "user")
-		if rerr == nil && userRole != nil {
-			roleID = userRole.ID
-			SetDefaultUserRoleID(roleID)
-		}
-	}
-	if roleID != uuid.Nil {
-		if assignErr := s.repo.AssignRoleToUser(ctx, user.ID, roleID); assignErr != nil {
-			return "", assignErr
-		}
+	if assignErr := s.assignDefaultRole(ctx, user.ID); assignErr != nil {
+		return "", assignErr
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -105,6 +93,24 @@ func (s *Service) Register(ctx context.Context, email, password, approvedID stri
 	}
 
 	return tokenString, nil
+}
+
+// assignDefaultRole assigns the default "user" role from the
+// process-startup cache. If the cache is empty (e.g. dev without
+// migrations), it looks the role up once and populates the cache.
+func (s *Service) assignDefaultRole(ctx context.Context, userID uuid.UUID) error {
+	roleID := DefaultUserRoleID()
+	if roleID == uuid.Nil {
+		userRole, err := s.repo.GetRoleByName(ctx, "user")
+		if err == nil && userRole != nil {
+			roleID = userRole.ID
+			SetDefaultUserRoleID(roleID)
+		}
+	}
+	if roleID == uuid.Nil {
+		return nil
+	}
+	return s.repo.AssignRoleToUser(ctx, userID, roleID)
 }
 
 // Login authenticates a user and returns a JWT token

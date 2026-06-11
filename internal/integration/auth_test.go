@@ -37,7 +37,6 @@ func newTestRouter(authSvc *auth.Service, authHandler *auth.Handler, todoHandler
 	)
 }
 
-
 func TestAuthRegister(t *testing.T) {
 	pool, _, _, _, _, _, authHandler, todoHandler := setupTestDeps(t)
 	defer pool.Close()

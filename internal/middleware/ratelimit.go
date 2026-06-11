@@ -42,7 +42,7 @@ func RateLimit(rps, burst int, idleTimeout time.Duration) func(http.Handler) htt
 		sweepEvery = int64(4096)
 	)
 
-	now := func() time.Time { return time.Now() }
+	now := time.Now
 	mkEntry := func() *entry {
 		e := &entry{limiter: rate.NewLimiter(rate.Limit(rps), burst)}
 		e.lastSeen.Store(now().UnixNano())
@@ -54,7 +54,8 @@ func RateLimit(rps, burst int, idleTimeout time.Duration) func(http.Handler) htt
 	sweep := func() {
 		cutoff := now().Add(-idleTimeout).UnixNano()
 		buckets.Range(func(k, v any) bool {
-			if v.(*entry).lastSeen.Load() < cutoff {
+			e, ok := v.(*entry)
+			if ok && e.lastSeen.Load() < cutoff {
 				buckets.Delete(k)
 			}
 			return true
@@ -76,7 +77,10 @@ func RateLimit(rps, burst int, idleTimeout time.Duration) func(http.Handler) htt
 			}
 
 			actual, _ := buckets.LoadOrStore(ip, mkEntry())
-			e := actual.(*entry)
+			e, ok := actual.(*entry)
+			if !ok {
+				e = mkEntry()
+			}
 			e.lastSeen.Store(now().UnixNano())
 
 			if !e.limiter.Allow() {

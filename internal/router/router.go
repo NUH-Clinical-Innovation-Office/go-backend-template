@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -47,7 +48,7 @@ func New(
 	authSvc appmiddleware.AuthProvider,
 	authHandler *auth.Handler,
 	todoHandler *todo.Handler,
-	corsCfg config.CORSConfig,
+	corsCfg *config.CORSConfig,
 	rateLimitCfg config.RateLimitConfig,
 	checkDBHealth func() error,
 	swaggerEnabled bool,
@@ -61,7 +62,7 @@ func New(
 		loggerMiddleware(logger),
 		chimiddleware.Recoverer,
 		appmiddleware.SecurityHeaders,
-		corsMiddleware(&corsCfg),
+		corsMiddleware(corsCfg),
 	)
 
 	// Public root routes (not rate-limited, not under the API timeout).
@@ -124,10 +125,12 @@ func New(
 func rootHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(map[string]string{
+		if err := json.NewEncoder(w).Encode(map[string]string{
 			"version": "1.0.0",
 			"status":  "running",
-		})
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }
 
@@ -150,7 +153,7 @@ func healthHandlerWithDB(checkDB func() error) http.HandlerFunc {
 		}
 
 		w.WriteHeader(code)
-		_ = json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp) //nolint:errcheck
 	}
 }
 
@@ -267,12 +270,7 @@ func isValidOrigin(origin string, allowedOrigins []string) bool {
 	if origin == "" {
 		return false
 	}
-	for _, allowed := range allowedOrigins {
-		if allowed == origin {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(allowedOrigins, origin)
 }
 
 // responseWriter wraps http.ResponseWriter to capture the status code

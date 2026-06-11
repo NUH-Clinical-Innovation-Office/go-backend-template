@@ -120,7 +120,7 @@ func run() error {
 		authService,
 		authHandler,
 		todoHandler,
-		cfg.CORS,
+		&cfg.CORS,
 		cfg.RateLimit,
 		func() error { return pool.Ping(context.Background()) },
 		cfg.Swagger.Enabled,

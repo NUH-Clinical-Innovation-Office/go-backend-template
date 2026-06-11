@@ -75,7 +75,7 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title string, de
 // Update applies a PATCH-style update to a todo, ensuring it belongs to
 // the user. Any nil pointer field preserves the existing column; non-nil
 // overwrites. A nil title is rejected (every update must touch title).
-func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title *string, description *string, isCompleted *bool, dueDate *time.Time) (*domain.Todo, error) {
+func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title, description *string, isCompleted *bool, dueDate *time.Time) (*domain.Todo, error) {
 	if title == nil || *title == "" {
 		return nil, ErrInvalidTodoParams
 	}

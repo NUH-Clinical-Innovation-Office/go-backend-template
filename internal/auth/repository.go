@@ -154,7 +154,10 @@ func (r *Repository) GetUserWithRolesAndApproved(ctx context.Context, id uuid.UU
 		return nil, err
 	}
 	user := userRowFromAggregate(&row)
-	roles, _ := row.RoleNames.([]string)
+	roles, ok := row.RoleNames.([]string)
+	if !ok {
+		roles = nil
+	}
 	return &UserWithContext{
 		User:         user,
 		RoleNames:    roles,
