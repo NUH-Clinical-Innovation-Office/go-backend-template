@@ -25,6 +25,7 @@ type UserRepository interface {
 	BulkCreateApprovedUsers(ctx context.Context, in BulkApprovedUserInput) ([]*ApprovedUserRow, error)
 	DeleteApprovedUser(ctx context.Context, id uuid.UUID) error
 	GetApprovedUserByEmail(ctx context.Context, email string) (*ApprovedUserRow, error)
+	GetUserWithRolesAndApproved(ctx context.Context, id uuid.UUID) (*UserWithContext, error)
 }
 
 // AuthService is the authentication-focused surface. Middleware that only

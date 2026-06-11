@@ -16,18 +16,19 @@ import (
 // UserRepository. Only the methods exercised by Service tests carry
 // state; the rest are nil/zero-valued and return safe defaults.
 type mockUserRepository struct {
-	getUserByEmail     func(ctx context.Context, email string) (*UserRow, error)
-	getUserByID        func(ctx context.Context, id uuid.UUID) (*UserRow, error)
-	approvedUserExists func(ctx context.Context, id uuid.UUID) (bool, error)
-	getApprovedByID    func(ctx context.Context, id uuid.UUID) (*ApprovedUserRow, error)
-	getRolesByName     func(ctx context.Context, name string) (*RoleRow, error)
-	assignRole         func(ctx context.Context, userID, roleID uuid.UUID) error
-	createUser         func(ctx context.Context, in UserCreateInput) (*UserRow, error)
-	getApprovedByEmail func(ctx context.Context, email string) (*ApprovedUserRow, error)
-	listApprovedUsers  func(ctx context.Context) ([]*ApprovedUserRow, error)
-	createApprovedUser func(ctx context.Context, in ApprovedUserCreateInput) (*ApprovedUserRow, error)
-	bulkApproved       func(ctx context.Context, in BulkApprovedUserInput) ([]*ApprovedUserRow, error)
-	deleteApproved     func(ctx context.Context, id uuid.UUID) error
+	getUserByEmail         func(ctx context.Context, email string) (*UserRow, error)
+	getUserByID            func(ctx context.Context, id uuid.UUID) (*UserRow, error)
+	approvedUserExists     func(ctx context.Context, id uuid.UUID) (bool, error)
+	getApprovedByID        func(ctx context.Context, id uuid.UUID) (*ApprovedUserRow, error)
+	getRolesByName         func(ctx context.Context, name string) (*RoleRow, error)
+	assignRole             func(ctx context.Context, userID, roleID uuid.UUID) error
+	createUser             func(ctx context.Context, in UserCreateInput) (*UserRow, error)
+	getApprovedByEmail     func(ctx context.Context, email string) (*ApprovedUserRow, error)
+	listApprovedUsers      func(ctx context.Context) ([]*ApprovedUserRow, error)
+	createApprovedUser     func(ctx context.Context, in ApprovedUserCreateInput) (*ApprovedUserRow, error)
+	bulkApproved           func(ctx context.Context, in BulkApprovedUserInput) ([]*ApprovedUserRow, error)
+	deleteApproved         func(ctx context.Context, id uuid.UUID) error
+	getWithRolesAndApproved func(ctx context.Context, id uuid.UUID) (*UserWithContext, error)
 }
 
 func (m *mockUserRepository) GetUserByEmail(ctx context.Context, email string) (*UserRow, error) {
@@ -104,6 +105,12 @@ func (m *mockUserRepository) GetApprovedUserByEmail(ctx context.Context, email s
 		return nil, assert.AnError
 	}
 	return m.getApprovedByEmail(ctx, email)
+}
+func (m *mockUserRepository) GetUserWithRolesAndApproved(ctx context.Context, id uuid.UUID) (*UserWithContext, error) {
+	if m.getWithRolesAndApproved == nil {
+		return nil, assert.AnError
+	}
+	return m.getWithRolesAndApproved(ctx, id)
 }
 
 func newTestService(t *testing.T, repo UserRepository) *Service {
@@ -206,12 +213,15 @@ func TestService_GetUserFromToken_InactiveUserRejected(t *testing.T) {
 	require.NoError(t, err)
 
 	repo := &mockUserRepository{
-		getUserByID: func(_ context.Context, _ uuid.UUID) (*UserRow, error) {
-			return &UserRow{
-				ID:             userID,
-				ApprovedUserID: approvedID,
-				Email:          "x@example.com",
-				IsActive:       false,
+		getWithRolesAndApproved: func(_ context.Context, _ uuid.UUID) (*UserWithContext, error) {
+			return &UserWithContext{
+				User: &UserRow{
+					ID:             userID,
+					ApprovedUserID: approvedID,
+					Email:          "x@example.com",
+					IsActive:       false,
+				},
+				RoleNames: []string{},
 			}, nil
 		},
 	}

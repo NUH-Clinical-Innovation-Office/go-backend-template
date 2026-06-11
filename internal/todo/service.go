@@ -72,9 +72,11 @@ func (s *Service) Create(ctx context.Context, userID uuid.UUID, title string, de
 	return &d, nil
 }
 
-// Update updates a todo, ensuring it belongs to the user
-func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title string, description *string, isCompleted bool, dueDate *time.Time) (*domain.Todo, error) {
-	if title == "" {
+// Update applies a PATCH-style update to a todo, ensuring it belongs to
+// the user. Any nil pointer field preserves the existing column; non-nil
+// overwrites. A nil title is rejected (every update must touch title).
+func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title *string, description *string, isCompleted *bool, dueDate *time.Time) (*domain.Todo, error) {
+	if title == nil || *title == "" {
 		return nil, ErrInvalidTodoParams
 	}
 
@@ -86,7 +88,7 @@ func (s *Service) Update(ctx context.Context, todoID, userID uuid.UUID, title st
 		return nil, ErrTodoNotOwned
 	}
 
-	row, err := s.repo.UpdateTodo(ctx, TodoUpdateInput{
+	row, err := s.repo.UpdateTodoPartial(ctx, TodoUpdateInput{
 		ID:          todoID,
 		Title:       title,
 		Description: description,

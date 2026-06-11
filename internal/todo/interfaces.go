@@ -16,7 +16,7 @@ type TodoRepository interface {
 	GetTodoByID(ctx context.Context, id uuid.UUID) (*TodoRow, error)
 	ListTodosByUserID(ctx context.Context, userID uuid.UUID) ([]TodoRow, error)
 	CreateTodo(ctx context.Context, in TodoCreateInput) (*TodoRow, error)
-	UpdateTodo(ctx context.Context, in TodoUpdateInput) (TodoRow, error)
+	UpdateTodoPartial(ctx context.Context, in TodoUpdateInput) (TodoRow, error)
 	DeleteTodo(ctx context.Context, id uuid.UUID) error
 }
 
@@ -25,6 +25,6 @@ type TodoService interface {
 	ListByUserID(ctx context.Context, userID uuid.UUID) ([]domain.Todo, error)
 	GetByID(ctx context.Context, todoID, userID uuid.UUID) (*domain.Todo, error)
 	Create(ctx context.Context, userID uuid.UUID, title string, description *string, dueDate *time.Time) (*domain.Todo, error)
-	Update(ctx context.Context, todoID, userID uuid.UUID, title string, description *string, isCompleted bool, dueDate *time.Time) (*domain.Todo, error)
+	Update(ctx context.Context, todoID, userID uuid.UUID, title *string, description *string, isCompleted *bool, dueDate *time.Time) (*domain.Todo, error)
 	Delete(ctx context.Context, todoID, userID uuid.UUID) error
 }

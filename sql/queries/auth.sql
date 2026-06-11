@@ -30,6 +30,28 @@ INNER JOIN user_roles ur ON r.id = ur.role_id
 WHERE ur.user_id = $1
 ORDER BY r.name;
 
+-- name: GetUserWithRolesAndApproved :one
+-- Single-query aggregate used by the auth middleware on every request.
+-- Returns the user row, a text[] of role names, and the joined approved_user
+-- (NULL when the user has no approved_user link). Three roundtrips in one.
+SELECT
+    u.id, u.approved_user_id, u.email, u.password_hash, u.is_active, u.created_at, u.updated_at,
+    COALESCE(
+        (SELECT array_agg(r.name ORDER BY r.name)
+         FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+         WHERE ur.user_id = u.id),
+        ARRAY[]::text[]
+    ) AS role_names,
+    a.id          AS approved_id,
+    a.email       AS approved_email,
+    a.first_name  AS approved_first_name,
+    a.created_by  AS approved_created_by,
+    a.created_at  AS approved_created_at,
+    a.updated_at  AS approved_updated_at
+FROM users u
+LEFT JOIN approved_users a ON a.id = u.approved_user_id
+WHERE u.id = $1;
+
 -- name: GetRolesByNames :many
 SELECT id, name, description, created_at
 FROM roles

@@ -47,9 +47,11 @@ func (in TodoCreateInput) toCreateParams() db.CreateTodoParams {
 	}
 }
 
-// toUpdateParams builds the sqlc param struct for UpdateTodo.
-func (in TodoUpdateInput) toUpdateParams() db.UpdateTodoParams {
-	return db.UpdateTodoParams{
+// toUpdateParamsPartial builds the sqlc param struct for UpdateTodoPartial.
+// nil pointer fields become NULL in the named-arg form, and the COALESCE
+// in the SQL preserves the existing column.
+func (in TodoUpdateInput) toUpdateParamsPartial() db.UpdateTodoPartialParams {
+	return db.UpdateTodoPartialParams{
 		ID:          dbutil.UUIDToPgtypeValue(in.ID),
 		Title:       in.Title,
 		Description: in.Description,

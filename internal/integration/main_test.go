@@ -5,6 +5,7 @@ package integration
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,6 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -73,12 +77,12 @@ func setupTestContainer(ctx context.Context) error {
 	testConfig = &config.Config{
 		Database: config.DatabaseConfig{
 			URL:             connStr,
-			MaxOpenConns:    10,
-			MaxIdleConns:    5,
+			MaxConns:        10,
+			MinConns:        2,
 			ConnMaxLifetime: 5 * time.Minute,
 		},
 		Auth: config.AuthConfig{
-			JWTSecretKey:     "test-secret-key-for-integration-tests",
+			JWTSecretKey:     "test-secret-key-for-integration-tests-32+bytes!",
 			JWTExpireMinutes: 60,
 			BcryptCost:       4, // Fast for tests
 		},
@@ -96,53 +100,27 @@ func runMigrations(connStr string) error {
 	return runMigrationsWithConnStr(connStr)
 }
 
+// runMigrationsWithConnStr runs the project migrations using the same
+// golang-migrate library as cmd/migrate, so the test schema can never
+// drift from production.
 func runMigrationsWithConnStr(connStr string) error {
-	// Simple migration runner - reads SQL files and executes them
-	ctx := context.Background()
-
-	// Create temporary config for migrations
-	cfg := &config.Config{
-		Database: config.DatabaseConfig{
-			URL:             connStr,
-			MaxOpenConns:    10,
-			MaxIdleConns:    5,
-			ConnMaxLifetime: 5 * time.Minute,
-		},
-	}
-
-	pool, err := db.New(ctx, cfg.Database)
-	if err != nil {
-		return err
-	}
-	defer pool.Close()
-
-	// Get repo root using caller file path (works from any test directory)
 	_, filename, _, _ := runtime.Caller(0)
 	repoRoot := filepath.Join(filepath.Dir(filename), "..", "..")
+	migrationsURL := "file://" + filepath.Join(repoRoot, "migrations")
 
-	// Read and execute migrations in order
-	migrations := []string{
-		"migrations/000001_create_approved_users.up.sql",
-		"migrations/000002_create_users.up.sql",
-		"migrations/000003_create_roles.up.sql",
-		"migrations/000004_create_user_roles.up.sql",
-		"migrations/000005_create_todos.up.sql",
-		"migrations/000006_seed_data.up.sql",
+	m, err := migrate.New(migrationsURL, connStr)
+	if err != nil {
+		return fmt.Errorf("create migrator: %w", err)
 	}
-
-	for _, migration := range migrations {
-		migrationPath := filepath.Join(repoRoot, migration)
-		sql, err := os.ReadFile(migrationPath)
-		if err != nil {
-			return fmt.Errorf("read migration %s: %w", migration, err)
+	defer func() {
+		if sErr, dErr := m.Close(); sErr != nil || dErr != nil {
+			fmt.Fprintf(os.Stderr, "migrator close: src=%v db=%v\n", sErr, dErr)
 		}
+	}()
 
-		_, err = pool.Exec(ctx, string(sql))
-		if err != nil {
-			return fmt.Errorf("execute migration %s: %w", migration, err)
-		}
+	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
+		return fmt.Errorf("apply migrations: %w", err)
 	}
-
 	return nil
 }
 

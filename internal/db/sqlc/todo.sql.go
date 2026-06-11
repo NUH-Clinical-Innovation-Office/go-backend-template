@@ -208,3 +208,47 @@ func (q *Queries) UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, e
 	)
 	return i, err
 }
+
+const updateTodoPartial = `-- name: UpdateTodoPartial :one
+UPDATE todos
+SET
+    title        = COALESCE($1::TEXT,         title),
+    description  = COALESCE($2::TEXT,   description),
+    is_completed = COALESCE($3::BOOLEAN, is_completed),
+    due_date     = COALESCE($4::TIMESTAMPTZ, due_date),
+    updated_at   = NOW()
+WHERE id = $5
+RETURNING id, user_id, title, description, is_completed, due_date, created_at, updated_at
+`
+
+type UpdateTodoPartialParams struct {
+	Title       *string            `json:"title"`
+	Description *string            `json:"description"`
+	IsCompleted *bool              `json:"is_completed"`
+	DueDate     pgtype.Timestamptz `json:"due_date"`
+	ID          pgtype.UUID        `json:"id"`
+}
+
+// PATCH-style update. Any nil named arg preserves the existing column.
+// The service layer is responsible for converting empty strings to nil.
+func (q *Queries) UpdateTodoPartial(ctx context.Context, arg UpdateTodoPartialParams) (Todo, error) {
+	row := q.db.QueryRow(ctx, updateTodoPartial,
+		arg.Title,
+		arg.Description,
+		arg.IsCompleted,
+		arg.DueDate,
+		arg.ID,
+	)
+	var i Todo
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Title,
+		&i.Description,
+		&i.IsCompleted,
+		&i.DueDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}

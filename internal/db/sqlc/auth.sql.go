@@ -11,6 +11,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const approvedUserExists = `-- name: ApprovedUserExists :one
+SELECT EXISTS(SELECT 1 FROM approved_users WHERE id = $1)
+`
+
+func (q *Queries) ApprovedUserExists(ctx context.Context, id pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, approvedUserExists, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const assignRole = `-- name: AssignRole :exec
 INSERT INTO user_roles (user_id, role_id)
 VALUES ($1, $2)
@@ -70,6 +81,25 @@ func (q *Queries) DeleteUser(ctx context.Context, id pgtype.UUID) error {
 	return err
 }
 
+const getRoleByName = `-- name: GetRoleByName :one
+SELECT id, name, description, created_at
+FROM roles
+WHERE name = $1
+LIMIT 1
+`
+
+func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) {
+	row := q.db.QueryRow(ctx, getRoleByName, name)
+	var i Role
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Description,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getRolesByNames = `-- name: GetRolesByNames :many
 SELECT id, name, description, created_at
 FROM roles
@@ -99,43 +129,6 @@ func (q *Queries) GetRolesByNames(ctx context.Context, dollar_1 []string) ([]Rol
 		return nil, err
 	}
 	return items, nil
-}
-
-// The following two functions are hand-written because the queries
-// were added after the last sqlc generation. They follow the same
-// shape as the surrounding generated code so a subsequent
-// `make sqlc-gen` will produce equivalent (and idempotent) output.
-
-// GetRoleByName returns the role with the given name, or pgx.ErrNoRows
-// if no row matches. The query is bounded by the UNIQUE constraint on
-// roles.name so LIMIT 1 is documentation, not necessity.
-func (q *Queries) GetRoleByName(ctx context.Context, name string) (Role, error) {
-	const getRoleByName = `-- name: GetRoleByName :one
-SELECT id, name, description, created_at
-FROM roles
-WHERE name = $1
-LIMIT 1
-`
-	row := q.db.QueryRow(ctx, getRoleByName, name)
-	var i Role
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Description,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-// ApprovedUserExists returns true when a row with the given id is
-// present. Uses EXISTS so the query plan stops at the first match.
-func (q *Queries) ApprovedUserExists(ctx context.Context, id pgtype.UUID) (bool, error) {
-	const approvedUserExists = `-- name: ApprovedUserExists :one
-SELECT EXISTS(SELECT 1 FROM approved_users WHERE id = $1)
-`
-	var exists bool
-	err := q.db.QueryRow(ctx, approvedUserExists, id).Scan(&exists)
-	return exists, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
@@ -211,6 +204,68 @@ func (q *Queries) GetUserRoles(ctx context.Context, userID pgtype.UUID) ([]Role,
 		return nil, err
 	}
 	return items, nil
+}
+
+const getUserWithRolesAndApproved = `-- name: GetUserWithRolesAndApproved :one
+SELECT
+    u.id, u.approved_user_id, u.email, u.password_hash, u.is_active, u.created_at, u.updated_at,
+    COALESCE(
+        (SELECT array_agg(r.name ORDER BY r.name)
+         FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+         WHERE ur.user_id = u.id),
+        ARRAY[]::text[]
+    ) AS role_names,
+    a.id          AS approved_id,
+    a.email       AS approved_email,
+    a.first_name  AS approved_first_name,
+    a.created_by  AS approved_created_by,
+    a.created_at  AS approved_created_at,
+    a.updated_at  AS approved_updated_at
+FROM users u
+LEFT JOIN approved_users a ON a.id = u.approved_user_id
+WHERE u.id = $1
+`
+
+type GetUserWithRolesAndApprovedRow struct {
+	ID                pgtype.UUID        `json:"id"`
+	ApprovedUserID    pgtype.UUID        `json:"approved_user_id"`
+	Email             string             `json:"email"`
+	PasswordHash      string             `json:"password_hash"`
+	IsActive          bool               `json:"is_active"`
+	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	RoleNames         interface{}        `json:"role_names"`
+	ApprovedID        pgtype.UUID        `json:"approved_id"`
+	ApprovedEmail     *string            `json:"approved_email"`
+	ApprovedFirstName *string            `json:"approved_first_name"`
+	ApprovedCreatedBy pgtype.UUID        `json:"approved_created_by"`
+	ApprovedCreatedAt pgtype.Timestamptz `json:"approved_created_at"`
+	ApprovedUpdatedAt pgtype.Timestamptz `json:"approved_updated_at"`
+}
+
+// Single-query aggregate used by the auth middleware on every request.
+// Returns the user row, a text[] of role names, and the joined approved_user
+// (NULL when the user has no approved_user link). Three roundtrips in one.
+func (q *Queries) GetUserWithRolesAndApproved(ctx context.Context, id pgtype.UUID) (GetUserWithRolesAndApprovedRow, error) {
+	row := q.db.QueryRow(ctx, getUserWithRolesAndApproved, id)
+	var i GetUserWithRolesAndApprovedRow
+	err := row.Scan(
+		&i.ID,
+		&i.ApprovedUserID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.IsActive,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RoleNames,
+		&i.ApprovedID,
+		&i.ApprovedEmail,
+		&i.ApprovedFirstName,
+		&i.ApprovedCreatedBy,
+		&i.ApprovedCreatedAt,
+		&i.ApprovedUpdatedAt,
+	)
+	return i, err
 }
 
 const removeRoleFromUser = `-- name: RemoveRoleFromUser :exec

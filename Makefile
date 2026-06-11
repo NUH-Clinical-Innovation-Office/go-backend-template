@@ -1,4 +1,4 @@
-.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy clean install-tools swagger sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci
+.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy clean install-tools swagger sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci rename-org
 
 # Variables
 BINARY_NAME=go-backend-template
@@ -83,3 +83,9 @@ verify: fmt vet lint sqlc-compile test ## Run all verification steps
 
 ci: verify ## Run CI pipeline
 	@echo "CI pipeline completed successfully!"
+
+rename-org: ## Rename the module path (requires NEW_ORG=github.com/your-org)
+	@test -n "$(NEW_ORG)" || (echo "NEW_ORG is required, e.g. make rename-org NEW_ORG=github.com/acme"; exit 1)
+	@grep -rl --include='*.go' --include='*.mod' --include='*.sum' 'github.com/your-org/go-backend-template' . | xargs sed -i '' "s|github.com/your-org/go-backend-template|$(NEW_ORG)/go-backend-template|g"
+	@go mod tidy
+	@echo "Renamed module path to $(NEW_ORG)/go-backend-template"

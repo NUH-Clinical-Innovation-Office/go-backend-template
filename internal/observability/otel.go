@@ -18,7 +18,10 @@ import (
 
 // Setup initializes OpenTelemetry for distributed tracing.
 // insecure controls whether the OTLP exporter uses plaintext (http) or TLS (https).
-func Setup(ctx context.Context, serviceName string, insecure bool, logger *zap.Logger) (*sdktrace.TracerProvider, error) {
+// exportTimeout caps the per-export call. The caller passes the server
+// shutdown timeout minus a small headroom so the export always finishes
+// inside the shutdown context.
+func Setup(ctx context.Context, serviceName string, insecure bool, exportTimeout time.Duration, logger *zap.Logger) (*sdktrace.TracerProvider, error) {
 	res, err := resource.New(ctx,
 		resource.WithFromEnv(),
 		resource.WithProcess(),
@@ -44,8 +47,14 @@ func Setup(ctx context.Context, serviceName string, insecure bool, logger *zap.L
 		}
 	}
 
+	// exportTimeout comes from the caller (typically
+	// cfg.Server.ShutdownTimeout - 1s). The min keeps a sane lower bound
+	// even if the operator misconfigures it.
+	if exportTimeout < 2*time.Second {
+		exportTimeout = 2 * time.Second
+	}
 	exporterOptions := []otlptracehttp.Option{
-		otlptracehttp.WithTimeout(10 * time.Second),
+		otlptracehttp.WithTimeout(exportTimeout),
 		otlptracehttp.WithRetry(otlptracehttp.RetryConfig{
 			Enabled:         true,
 			InitialInterval: 1 * time.Second,

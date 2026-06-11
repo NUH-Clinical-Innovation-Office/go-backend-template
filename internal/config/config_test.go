@@ -12,7 +12,7 @@ import (
 func TestLoad(t *testing.T) {
 	// Set required env vars
 	os.Setenv("DATABASE_URL", "postgres://user:pass@localhost/db")
-	os.Setenv("JWT_SECRET_KEY", "test-secret")
+	os.Setenv("JWT_SECRET_KEY", "test-secret-test-secret-test-secret-32+")
 	defer func() {
 		os.Unsetenv("DATABASE_URL")
 		os.Unsetenv("JWT_SECRET_KEY")
@@ -22,7 +22,7 @@ func TestLoad(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, cfg)
 	assert.Equal(t, 8080, cfg.Server.Port)
-	assert.Equal(t, "test-secret", cfg.Auth.JWTSecretKey)
+	assert.Equal(t, "test-secret-test-secret-test-secret-32+", cfg.Auth.JWTSecretKey)
 }
 
 func TestLoad_RequiredFields(t *testing.T) {
@@ -46,7 +46,7 @@ func TestValidate(t *testing.T) {
 			name: "valid config",
 			cfg: &Config{
 				Database: DatabaseConfig{URL: "postgres://localhost/db"},
-				Auth:     AuthConfig{JWTSecretKey: "secret"},
+				Auth:     AuthConfig{JWTSecretKey: "this-is-a-32-byte-test-secret-32!"},
 				Server:   ServerConfig{Port: 8080},
 			},
 			wantErr: false,
@@ -55,7 +55,7 @@ func TestValidate(t *testing.T) {
 			name: "missing database url",
 			cfg: &Config{
 				Database: DatabaseConfig{URL: ""},
-				Auth:     AuthConfig{JWTSecretKey: "secret"},
+				Auth:     AuthConfig{JWTSecretKey: "this-is-a-32-byte-test-secret-32!"},
 				Server:   ServerConfig{Port: 8080},
 			},
 			wantErr: true,
@@ -73,7 +73,7 @@ func TestValidate(t *testing.T) {
 			name: "invalid port",
 			cfg: &Config{
 				Database: DatabaseConfig{URL: "postgres://localhost/db"},
-				Auth:     AuthConfig{JWTSecretKey: "secret"},
+				Auth:     AuthConfig{JWTSecretKey: "this-is-a-32-byte-test-secret-32!"},
 				Server:   ServerConfig{Port: 0},
 			},
 			wantErr: true,
@@ -171,7 +171,7 @@ func TestGetCommaSeparatedEnv(t *testing.T) {
 func TestSwaggerConfig(t *testing.T) {
 	t.Run("defaults to disabled", func(t *testing.T) {
 		t.Setenv("DATABASE_URL", "postgres://x:x@localhost/x")
-		t.Setenv("JWT_SECRET_KEY", "secret")
+		t.Setenv("JWT_SECRET_KEY", "this-is-a-32-byte-test-secret-32!")
 		cfg, err := Load()
 		require.NoError(t, err)
 		assert.False(t, cfg.Swagger.Enabled)
@@ -179,7 +179,7 @@ func TestSwaggerConfig(t *testing.T) {
 
 	t.Run("enabled when SWAGGER_ENABLED=true", func(t *testing.T) {
 		t.Setenv("DATABASE_URL", "postgres://x:x@localhost/x")
-		t.Setenv("JWT_SECRET_KEY", "secret")
+		t.Setenv("JWT_SECRET_KEY", "this-is-a-32-byte-test-secret-32!")
 		t.Setenv("SWAGGER_ENABLED", "true")
 		cfg, err := Load()
 		require.NoError(t, err)

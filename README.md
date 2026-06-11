@@ -39,6 +39,21 @@ A production-ready Go backend template implementing a REST API with JWT authenti
 | Timeout Middleware | 30-second request timeout protection |
 | Integration Tests | testcontainers-go for real database testing |
 
+## Renaming this template
+
+The module path is `github.com/your-org/go-backend-template` as a
+placeholder. To rename it for your fork:
+
+```sh
+make rename-org NEW_ORG=github.com/acme
+```
+
+This rewrites every Go import and runs `go mod tidy`. After it finishes,
+update the placeholders in `.env.example` (`CORS_ALLOWED_ORIGINS`,
+`SERVICE_NAME`, the OTel endpoint, etc.) and the `DOCKER_IMAGE` variable
+in the Makefile. Commit the rename as the first change so it is easy to
+revert.
+
 ## Prerequisites
 
 - Go 1.26+

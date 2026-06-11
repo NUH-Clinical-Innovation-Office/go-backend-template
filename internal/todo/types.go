@@ -32,11 +32,12 @@ type TodoCreateInput struct {
 }
 
 // TodoUpdateInput is what the service hands to the repository to
-// update a todo. ID identifies the row; the other fields overwrite.
+// update a todo. ID identifies the row; nil pointer fields preserve
+// the existing column (PATCH semantics). Non-nil pointers overwrite.
 type TodoUpdateInput struct {
 	ID          uuid.UUID
-	Title       string
+	Title       *string
 	Description *string
-	IsCompleted bool
+	IsCompleted *bool
 	DueDate     *time.Time
 }

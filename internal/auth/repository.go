@@ -131,14 +131,35 @@ func (r *Repository) BulkCreateApprovedUsers(ctx context.Context, in BulkApprove
 // ErrApprovedUserNotFound when no row matched the id, so callers can
 // surface 404 instead of silently succeeding.
 func (r *Repository) DeleteApprovedUser(ctx context.Context, id uuid.UUID) error {
-	tag, err := r.db.DeleteApprovedUser(ctx, dbutil.UUIDToPgtypeValue(id))
-	if err != nil {
+	if err := r.db.DeleteApprovedUser(ctx, dbutil.UUIDToPgtypeValue(id)); err != nil {
 		return err
 	}
-	if tag.RowsAffected() == 0 {
-		return ErrApprovedUserNotFound
-	}
 	return nil
+}
+
+// UserWithContext is the result of the single-query aggregate. The
+// caller (service) translates this into a domain.User.
+type UserWithContext struct {
+	User         *UserRow
+	RoleNames    []string
+	ApprovedUser *ApprovedUserRow // nil when the user has no approved_user link
+}
+
+// GetUserWithRolesAndApproved returns the user, their role names, and
+// their approved_user link in one roundtrip. Used by the auth
+// middleware on every request.
+func (r *Repository) GetUserWithRolesAndApproved(ctx context.Context, id uuid.UUID) (*UserWithContext, error) {
+	row, err := r.db.GetUserWithRolesAndApproved(ctx, dbutil.UUIDToPgtypeValue(id))
+	if err != nil {
+		return nil, err
+	}
+	user := userRowFromAggregate(&row)
+	roles, _ := row.RoleNames.([]string)
+	return &UserWithContext{
+		User:         user,
+		RoleNames:    roles,
+		ApprovedUser: approvedUserRowFromAggregate(&row),
+	}, nil
 }
 
 // GetApprovedUserByEmail gets an approved user by email.

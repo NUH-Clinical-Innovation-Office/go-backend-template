@@ -85,8 +85,8 @@ Handler-level annotations on all handlers in `internal/auth/handler.go` and `int
 // @Produce      json
 // @Param        body body LoginRequest true "Login credentials"
 // @Success      200 {object} AuthResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
+// @Failure      400 {object} http2.ErrorResponse
+// @Failure      401 {object} http2.ErrorResponse
 // @Router       /auth/login [post]
 ```
 
