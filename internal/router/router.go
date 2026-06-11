@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/logging"
@@ -21,8 +20,6 @@ import (
 	"github.com/your-org/go-backend-template/internal/todo"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
-
-	_ "github.com/your-org/go-backend-template/docs/swagger" // generated swagger docs
 )
 
 // HealthResponse is the JSON shape returned by /health. The Database
@@ -69,14 +66,7 @@ func New(
 	r.Get("/", rootHandler())
 	r.Get("/health", healthHandlerWithDB(checkDBHealth))
 
-	if swaggerEnabled {
-		r.Get("/swagger", func(w http.ResponseWriter, r *http.Request) {
-			http.Redirect(w, r, r.RequestURI+"/", http.StatusMovedPermanently)
-		})
-		r.Get("/swagger/*", httpSwagger.Handler(
-			httpSwagger.URL("/swagger/doc.json"),
-		))
-	}
+	mountSwagger(r, swaggerEnabled)
 
 	// API routes: timeouts + per-IP rate limit.
 	r.Route("/api/v1", func(r chi.Router) {

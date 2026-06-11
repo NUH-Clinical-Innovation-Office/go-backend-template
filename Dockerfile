@@ -2,27 +2,32 @@
 ARG GO_VERSION
 FROM golang:${GO_VERSION}-alpine AS builder
 
-WORKDIR /app
+# Set to "swagger" to build with /swagger UI enabled (non-production).
+ARG BUILD_TAGS=
 
-# Install dependencies
-RUN apk add --no-cache git
+WORKDIR /app
 
 # Copy go mod files
 COPY go.mod go.sum ./
-RUN go mod download
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 # Copy source code
 COPY . .
 
-# Generate swagger docs
-RUN go install github.com/swaggo/swag/cmd/swag@v1.16.6 && \
-    swag init --parseInternal -g cmd/api/main.go -o docs/swagger
+# Generate swagger docs (only needed for the "swagger" build tag)
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    if [ "$BUILD_TAGS" = "swagger" ]; then \
+        go install github.com/swaggo/swag/cmd/swag@v1.16.6 && \
+        swag init --parseInternal -g cmd/api/main.go -o docs/swagger; \
+    fi
 
-# Build the API
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api ./cmd/api
-
-# Build the migration tool
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o migrate ./cmd/migrate
+# Build the API and migration tool
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=linux go build -tags "$BUILD_TAGS" -o api ./cmd/api && \
+    CGO_ENABLED=0 GOOS=linux go build -tags "$BUILD_TAGS" -o migrate ./cmd/migrate
 
 # Final stage
 FROM alpine:3.19

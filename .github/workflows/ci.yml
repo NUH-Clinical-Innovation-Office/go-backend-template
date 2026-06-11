@@ -40,8 +40,6 @@ jobs:
       contents: read
       packages: write
     uses: ./.github/workflows/reusable-docker.yml
-    with:
-      platforms: linux/amd64,linux/arm64
     secrets: inherit
 
   security-scan:

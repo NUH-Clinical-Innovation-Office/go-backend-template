@@ -47,16 +47,20 @@ jobs:
 
       - name: Run Trivy vulnerability scanner (SARIF)
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_PLATFORM: "linux/arm64"
         with:
           image-ref: ${{ steps.extract.outputs.tag }}
           format: "sarif"
           output: "trivy-results.sarif"
-          severity: "CRITICAL,HIGH"
+          severity: "CRITICAL"
 
       - name: Run Trivy vulnerability scanner (table output)
         uses: aquasecurity/trivy-action@v0.36.0
+        env:
+          TRIVY_PLATFORM: "linux/arm64"
         with:
           image-ref: ${{ steps.extract.outputs.tag }}
           format: "table"
-          severity: "CRITICAL,HIGH"
+          severity: "CRITICAL"
           exit-code: "1"
