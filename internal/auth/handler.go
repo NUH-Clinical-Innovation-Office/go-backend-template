@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	apiTypes "github.com/oapi-codegen/runtime/types"
+	"github.com/your-org/go-backend-template/internal/api"
 	"github.com/your-org/go-backend-template/internal/domain"
 	http2 "github.com/your-org/go-backend-template/internal/http"
 	"github.com/your-org/go-backend-template/internal/middleware"
@@ -30,19 +31,6 @@ func writeDecodeError(w http.ResponseWriter, err error) {
 		return
 	}
 	http2.RespondError(w, http.StatusBadRequest, "invalid request body")
-}
-
-// RegisterRequest represents a registration request
-type RegisterRequest struct {
-	Email      string `json:"email"`
-	Password   string `json:"password"`
-	ApprovedID string `json:"approved_id"`
-}
-
-// LoginRequest represents a login request
-type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
 }
 
 // AuthResponse represents an authentication response
@@ -78,36 +66,24 @@ func NewHandler(auth AuthService, admin ApprovedUserAdminService, logger *zap.Lo
 	}
 }
 
-// RegisterHandler handles user registration
-//
-// @Summary      Register a new user
-// @Tags         auth
-// @Accept       json
-// @Produce      json
-// @Param        body body RegisterRequest true "Registration details"
-// @Success      201 {object} AuthResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      404 {object} http.ErrorResponse
-// @Failure      409 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /auth/register [post]
-func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	var req RegisterRequest
+// RegisterUser implements api.ServerInterface.
+func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
+	var req api.RegisterRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeDecodeError(w, err)
 		return
 	}
 
 	if err := validator.ValidateRegister(validator.RegisterRequest{
-		Email:      req.Email,
+		Email:      string(req.Email),
 		Password:   req.Password,
-		ApprovedID: req.ApprovedID,
+		ApprovedID: req.ApprovedId,
 	}); err != nil {
 		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	token, err := h.auth.Register(r.Context(), req.Email, req.Password, req.ApprovedID)
+	token, err := h.auth.Register(r.Context(), string(req.Email), req.Password, req.ApprovedId)
 	if err != nil {
 		h.logger.Error("register failed", zap.Error(err))
 		if errors.Is(err, ErrUserNotFound) {
@@ -132,34 +108,23 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// LoginHandler handles user login
-//
-// @Summary      Login
-// @Tags         auth
-// @Accept       json
-// @Produce      json
-// @Param        body body LoginRequest true "Login credentials"
-// @Success      200 {object} AuthResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /auth/login [post]
-func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	var req LoginRequest
+// LoginUser implements api.ServerInterface.
+func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
+	var req api.LoginRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeDecodeError(w, err)
 		return
 	}
 
 	if err := validator.ValidateLogin(validator.LoginRequest{
-		Email:    req.Email,
+		Email:    string(req.Email),
 		Password: req.Password,
 	}); err != nil {
 		http2.RespondError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	token, err := h.auth.Login(r.Context(), req.Email, req.Password)
+	token, err := h.auth.Login(r.Context(), string(req.Email), req.Password)
 	if err != nil {
 		h.logger.Error("login failed", zap.Error(err))
 		if errors.Is(err, ErrInvalidCredentials) {
@@ -176,16 +141,8 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// GetMeHandler handles getting current user info
-//
-// @Summary      Get current user
-// @Tags         auth
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200 {object} UserResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Router       /me [get]
-func (h *Handler) GetMeHandler(w http.ResponseWriter, r *http.Request) {
+// GetCurrentUser implements api.ServerInterface.
+func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
 		http2.RespondError(w, http.StatusUnauthorized, "unauthorized")
@@ -214,12 +171,6 @@ func (h *Handler) GetMeHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ApprovedUserRequest represents an approved user creation request
-type ApprovedUserRequest struct {
-	Email     string `json:"email"`
-	FirstName string `json:"first_name"`
-}
-
 // ApprovedUserResponse represents an approved user response
 type ApprovedUserResponse struct {
 	ID        string    `json:"id"`
@@ -227,11 +178,6 @@ type ApprovedUserResponse struct {
 	FirstName string    `json:"first_name"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-}
-
-// BulkApprovedUserRequest represents a bulk approved user creation request
-type BulkApprovedUserRequest struct {
-	Users []ApprovedUserRequest `json:"users"`
 }
 
 func toApprovedUserResponse(au *domain.ApprovedUser) *ApprovedUserResponse {
@@ -255,17 +201,8 @@ func toApprovedUserResponses(aus []*domain.ApprovedUser) []*ApprovedUserResponse
 	return result
 }
 
-// ListApprovedUsersHandler handles GET /admin/approved-users
-//
-// @Summary      List approved users
-// @Tags         admin
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200 {array}  ApprovedUserResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /admin/approved-users [get]
-func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
+// ListApprovedUsers implements api.ServerInterface.
+func (h *Handler) ListApprovedUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.admin.ListApprovedUsers(r.Context())
 	if err != nil {
 		h.logger.Error("list approved users failed", zap.Error(err))
@@ -276,29 +213,16 @@ func (h *Handler) ListApprovedUsersHandler(w http.ResponseWriter, r *http.Reques
 	http2.RespondJSON(w, http.StatusOK, toApprovedUserResponses(users))
 }
 
-// CreateApprovedUserHandler handles POST /admin/approved-users
-//
-// @Summary      Create approved user
-// @Tags         admin
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        body body ApprovedUserRequest true "Approved user details"
-// @Success      201 {object} ApprovedUserResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      409 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /admin/approved-users [post]
-func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Request) {
-	var req ApprovedUserRequest
+// CreateApprovedUser implements api.ServerInterface.
+func (h *Handler) CreateApprovedUser(w http.ResponseWriter, r *http.Request) {
+	var req api.ApprovedUserRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeDecodeError(w, err)
 		return
 	}
 
 	if err := validator.ValidateApprovedUser(validator.ApprovedUserRequest{
-		Email:     req.Email,
+		Email:     string(req.Email),
 		FirstName: req.FirstName,
 	}); err != nil {
 		http2.RespondError(w, http.StatusBadRequest, err.Error())
@@ -312,7 +236,7 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	approvedUser, err := h.admin.CreateApprovedUser(r.Context(), req.Email, req.FirstName, creator.ApprovedUserID)
+	approvedUser, err := h.admin.CreateApprovedUser(r.Context(), string(req.Email), req.FirstName, creator.ApprovedUserID)
 	if err != nil {
 		h.logger.Error("create approved user failed", zap.Error(err))
 		if errors.Is(err, ErrApprovedEmailExists) {
@@ -326,21 +250,9 @@ func (h *Handler) CreateApprovedUserHandler(w http.ResponseWriter, r *http.Reque
 	http2.RespondJSON(w, http.StatusCreated, toApprovedUserResponse(approvedUser))
 }
 
-// BulkCreateApprovedUsersHandler handles POST /admin/approved-users/bulk
-//
-// @Summary      Bulk create approved users
-// @Tags         admin
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        body body BulkApprovedUserRequest true "List of approved users"
-// @Success      201 {array}  ApprovedUserResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /admin/approved-users/bulk [post]
-func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.Request) {
-	var req BulkApprovedUserRequest
+// BulkCreateApprovedUsers implements api.ServerInterface.
+func (h *Handler) BulkCreateApprovedUsers(w http.ResponseWriter, r *http.Request) {
+	var req api.BulkApprovedUserRequest
 	if err := decodeJSONBody(w, r, &req); err != nil {
 		writeDecodeError(w, err)
 		return
@@ -353,7 +265,7 @@ func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.
 
 	for _, u := range req.Users {
 		if err := validator.ValidateApprovedUser(validator.ApprovedUserRequest{
-			Email:     u.Email,
+			Email:     string(u.Email),
 			FirstName: u.FirstName,
 		}); err != nil {
 			http2.RespondError(w, http.StatusBadRequest, err.Error())
@@ -371,7 +283,7 @@ func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.
 	emails := make([]string, len(req.Users))
 	firstNames := make([]string, len(req.Users))
 	for i, u := range req.Users {
-		emails[i] = u.Email
+		emails[i] = string(u.Email)
 		firstNames[i] = u.FirstName
 	}
 
@@ -385,33 +297,9 @@ func (h *Handler) BulkCreateApprovedUsersHandler(w http.ResponseWriter, r *http.
 	http2.RespondJSON(w, http.StatusCreated, toApprovedUserResponses(users))
 }
 
-// DeleteApprovedUserHandler handles DELETE /admin/approved-users/{id}
-//
-// @Summary      Delete approved user
-// @Tags         admin
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id path string true "Approved user UUID"
-// @Success      204
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      404 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /admin/approved-users/{id} [delete]
-func (h *Handler) DeleteApprovedUserHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := chi.URLParam(r, "id")
-	if idStr == "" {
-		http2.RespondError(w, http.StatusBadRequest, "id is required")
-		return
-	}
-
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid id format")
-		return
-	}
-
-	if err := h.admin.DeleteApprovedUser(r.Context(), id); err != nil {
+// DeleteApprovedUser implements api.ServerInterface.
+func (h *Handler) DeleteApprovedUser(w http.ResponseWriter, r *http.Request, id apiTypes.UUID) {
+	if err := h.admin.DeleteApprovedUser(r.Context(), uuid.UUID(id)); err != nil {
 		h.logger.Error("delete approved user failed", zap.Error(err))
 		if errors.Is(err, ErrApprovedUserNotFound) {
 			http2.RespondError(w, http.StatusNotFound, "approved user not found")
