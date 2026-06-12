@@ -1,4 +1,4 @@
-.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy clean install-tools swagger sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci rename-org
+.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy clean install-tools openapi sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci rename-org
 
 # Variables
 BINARY_NAME=go-backend-template
@@ -49,10 +49,12 @@ clean: ## Clean build artifacts
 install-tools: ## Install required tools
 	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 	@go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0
-	@go install github.com/swaggo/swag/cmd/swag@latest
+	@go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1
 
-swagger: ## Generate Swagger docs from annotations
-	@swag init --parseInternal -g cmd/api/main.go -o docs/swagger
+openapi: ## Generate Go code from api/openapi.yaml (run after editing the spec)
+	@oapi-codegen -config api/cfg/types.yaml api/openapi.yaml
+	@oapi-codegen -config api/cfg/server.yaml api/openapi.yaml
+	@oapi-codegen -config api/cfg/client.yaml api/openapi.yaml
 
 sqlc-gen: ## Generate sqlc code (re-run after any new migration is added)
 	@sqlc generate
