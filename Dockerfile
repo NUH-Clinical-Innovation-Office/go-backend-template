@@ -15,14 +15,6 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Copy source code
 COPY . .
 
-# Generate swagger docs (only needed for the "swagger" build tag)
-RUN --mount=type=cache,target=/go/pkg/mod \
-    --mount=type=cache,target=/root/.cache/go-build \
-    if [ "$BUILD_TAGS" = "swagger" ]; then \
-        go install github.com/swaggo/swag/cmd/swag@v1.16.6 && \
-        swag init --parseInternal -g cmd/api/main.go -o docs/swagger; \
-    fi
-
 # Build the API and migration tool
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
