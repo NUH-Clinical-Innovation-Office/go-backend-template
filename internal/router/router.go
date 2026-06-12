@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/getkin/kin-openapi/openapi3filter"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	oapimiddleware "github.com/oapi-codegen/nethttp-middleware"
@@ -83,10 +84,15 @@ func New(
 	}
 
 	apiSrv := &apiServer{todo: todoHandler, auth: authHandler}
-	wrapper := api.ServerInterfaceWrapper{Handler: apiSrv}
+	wrapper := api.ServerInterfaceWrapper{
+		Handler: apiSrv,
+		ErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {
+			openAPIValidationErrorHandler(w, err.Error(), http.StatusBadRequest)
+		},
+	}
 	swagger, err := api.GetSwagger()
-	if err == nil {
-		swagger.Servers = nil
+	if err != nil {
+		swagger = nil
 	}
 
 	// API routes: timeouts + per-IP rate limit.
@@ -97,7 +103,11 @@ func New(
 		)
 		if swagger != nil {
 			r.Use(oapimiddleware.OapiRequestValidatorWithOptions(swagger, &oapimiddleware.Options{
-				ErrorHandler: openAPIValidationErrorHandler,
+				Options: openapi3filter.Options{
+					AuthenticationFunc: openapi3filter.NoopAuthenticationFunc,
+				},
+				ErrorHandler:          openAPIValidationErrorHandler,
+				SilenceServersWarning: true,
 			}))
 		}
 

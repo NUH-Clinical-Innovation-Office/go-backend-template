@@ -3,7 +3,6 @@
 package integration
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -35,7 +34,7 @@ func TestTodoCRUD(t *testing.T) {
 		body := map[string]string{
 			"title": "Test todo",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/todos", body)
 		req.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -49,7 +48,7 @@ func TestTodoCRUD(t *testing.T) {
 		body := map[string]string{
 			"title": "",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/todos", body)
 		req.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -62,7 +61,7 @@ func TestTodoCRUD(t *testing.T) {
 		body := map[string]string{
 			"title": string(make([]byte, 1001)), // Over 1000 char limit
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/todos", body)
 		req.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -76,7 +75,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":    "Todo with due date",
 			"due_date": "2026-12-31T23:59:59Z",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/todos", body)
 		req.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -92,7 +91,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":    "Todo with bad date",
 			"due_date": "invalid-date",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/todos", body)
 		req.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -115,7 +114,7 @@ func TestTodoCRUD(t *testing.T) {
 	t.Run("get todo by id", func(t *testing.T) {
 		// First create a todo to get its ID
 		createBody := map[string]string{"title": "Get test"}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)
@@ -158,7 +157,7 @@ func TestTodoCRUD(t *testing.T) {
 	t.Run("update todo", func(t *testing.T) {
 		// Create a todo first
 		createBody := map[string]string{"title": "Update test"}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)
@@ -172,7 +171,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "Updated title",
 			"is_completed": true,
 		}
-		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
+		updateReq := newJSONRequest(http.MethodPatch, "/api/v1/todos/"+todoID, updateBody)
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -189,7 +188,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":       "Original",
 			"description": "Keep me",
 		}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)
@@ -200,7 +199,7 @@ func TestTodoCRUD(t *testing.T) {
 
 		// PATCH with only the title — description should NOT be wiped.
 		patchBody := map[string]interface{}{"title": "Renamed"}
-		patchReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(patchBody)))
+		patchReq := newJSONRequest(http.MethodPatch, "/api/v1/todos/"+todoID, patchBody)
 		patchReq.Header.Set("Authorization", "Bearer "+token)
 		patchW := httptest.NewRecorder()
 		r.ServeHTTP(patchW, patchReq)
@@ -215,7 +214,7 @@ func TestTodoCRUD(t *testing.T) {
 	t.Run("update todo with empty title", func(t *testing.T) {
 		// Create a todo first
 		createBody := map[string]string{"title": "Update test"}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)
@@ -229,7 +228,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "",
 			"is_completed": false,
 		}
-		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
+		updateReq := newJSONRequest(http.MethodPatch, "/api/v1/todos/"+todoID, updateBody)
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -243,7 +242,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "Updated title",
 			"is_completed": true,
 		}
-		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/00000000-0000-0000-0000-000000000099", bytes.NewReader(mustJSON(updateBody)))
+		updateReq := newJSONRequest(http.MethodPatch, "/api/v1/todos/00000000-0000-0000-0000-000000000099", updateBody)
 		updateReq.Header.Set("Authorization", "Bearer "+token)
 		w := httptest.NewRecorder()
 
@@ -255,7 +254,7 @@ func TestTodoCRUD(t *testing.T) {
 	t.Run("delete todo", func(t *testing.T) {
 		// Create a todo first
 		createBody := map[string]string{"title": "Delete test"}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)
@@ -321,7 +320,7 @@ func TestTodoCRUD(t *testing.T) {
 
 		// Create todo for first user
 		createBody := map[string]string{"title": "My todo"}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)
@@ -351,7 +350,7 @@ func TestTodoCRUD(t *testing.T) {
 
 		// Create todo for first user
 		createBody := map[string]string{"title": "My todo"}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)
@@ -365,7 +364,7 @@ func TestTodoCRUD(t *testing.T) {
 			"title":        "Hacked title",
 			"is_completed": true,
 		}
-		updateReq := httptest.NewRequest(http.MethodPatch, "/api/v1/todos/"+todoID, bytes.NewReader(mustJSON(updateBody)))
+		updateReq := newJSONRequest(http.MethodPatch, "/api/v1/todos/"+todoID, updateBody)
 		updateReq.Header.Set("Authorization", "Bearer "+otherToken)
 		w := httptest.NewRecorder()
 
@@ -385,7 +384,7 @@ func TestTodoCRUD(t *testing.T) {
 
 		// Create todo for first user
 		createBody := map[string]string{"title": "My todo"}
-		createReq := httptest.NewRequest(http.MethodPost, "/api/v1/todos", bytes.NewReader(mustJSON(createBody)))
+		createReq := newJSONRequest(http.MethodPost, "/api/v1/todos", createBody)
 		createReq.Header.Set("Authorization", "Bearer "+token)
 		createW := httptest.NewRecorder()
 		r.ServeHTTP(createW, createReq)

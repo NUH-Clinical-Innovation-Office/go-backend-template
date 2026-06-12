@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	apiTypes "github.com/oapi-codegen/runtime/types"
 	"github.com/your-org/go-backend-template/internal/api"
 	"github.com/your-org/go-backend-template/internal/domain"
@@ -95,7 +94,7 @@ func (h *Handler) GetTodo(w http.ResponseWriter, r *http.Request, id apiTypes.UU
 		return
 	}
 
-	todo, err := h.svc.GetByID(r.Context(), uuid.UUID(id), user.ID)
+	todo, err := h.svc.GetByID(r.Context(), id, user.ID)
 	if err != nil {
 		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
@@ -126,7 +125,7 @@ func (h *Handler) UpdateTodo(w http.ResponseWriter, r *http.Request, id apiTypes
 		return
 	}
 
-	todo, err := h.svc.Update(r.Context(), uuid.UUID(id), user.ID, req.Title, req.Description, req.IsCompleted, req.DueDate)
+	todo, err := h.svc.Update(r.Context(), id, user.ID, req.Title, req.Description, req.IsCompleted, req.DueDate)
 	if err != nil {
 		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
@@ -147,7 +146,7 @@ func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request, id apiTypes
 		return
 	}
 
-	err := h.svc.Delete(r.Context(), uuid.UUID(id), user.ID)
+	err := h.svc.Delete(r.Context(), id, user.ID)
 	if err != nil {
 		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")

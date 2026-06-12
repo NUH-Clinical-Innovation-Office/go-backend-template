@@ -55,7 +55,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "Password123",
 			"approved_id": "00000000-0000-0000-0000-000000000001",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -69,7 +69,7 @@ func TestAuthRegister(t *testing.T) {
 			"email":    "test@example.com",
 			"password": "Password123",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -83,7 +83,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "Password123",
 			"approved_id": "00000000-0000-0000-0000-000000000999",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -97,7 +97,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "Password123",
 			"approved_id": "00000000-0000-0000-0000-000000000001",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -111,7 +111,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "Password123",
 			"approved_id": "00000000-0000-0000-0000-000000000001",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -125,7 +125,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "short",
 			"approved_id": "00000000-0000-0000-0000-000000000001",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -139,7 +139,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "password123",
 			"approved_id": "00000000-0000-0000-0000-000000000001",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -154,13 +154,13 @@ func TestAuthRegister(t *testing.T) {
 			"approved_id": "00000000-0000-0000-0000-000000000001",
 		}
 		// First registration
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusCreated, w.Code)
 
 		// Duplicate registration - now returns 409
-		req = httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req = newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w = httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 
@@ -174,7 +174,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "Password123",
 			"approved_id": "not-a-uuid",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -189,7 +189,7 @@ func TestAuthRegister(t *testing.T) {
 			"password":    "Password123",
 			"approved_id": "",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/register", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/register", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -219,7 +219,7 @@ func TestAuthLogin(t *testing.T) {
 			"email":    "login@example.com",
 			"password": "Password123",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/login", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -233,7 +233,7 @@ func TestAuthLogin(t *testing.T) {
 			"email":    "login@example.com",
 			"password": "Wrongpassword1",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/login", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -246,7 +246,7 @@ func TestAuthLogin(t *testing.T) {
 			"email":    "notfound@example.com",
 			"password": "Password123",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/login", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -259,7 +259,7 @@ func TestAuthLogin(t *testing.T) {
 			"email":    "",
 			"password": "Password123",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/login", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -272,7 +272,7 @@ func TestAuthLogin(t *testing.T) {
 			"email":    "invalid-email",
 			"password": "Password123",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/login", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -285,7 +285,7 @@ func TestAuthLogin(t *testing.T) {
 			"email":    "login@example.com",
 			"password": "",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/auth/login", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/auth/login", body)
 		w := httptest.NewRecorder()
 
 		r.ServeHTTP(w, req)
@@ -300,6 +300,12 @@ func mustJSON(v interface{}) []byte {
 		panic(err)
 	}
 	return b
+}
+
+func newJSONRequest(method, target string, body any) *http.Request {
+	req := httptest.NewRequest(method, target, bytes.NewReader(mustJSON(body)))
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }
 
 func TestAdminApprovedUsers(t *testing.T) {
@@ -328,7 +334,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 			"email":      "newuser@example.com",
 			"first_name": "New",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 
@@ -381,14 +387,14 @@ func TestAdminApprovedUsers(t *testing.T) {
 			"email":      "dupemail@example.com",
 			"first_name": "First",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 		r.ServeHTTP(w, req)
 		assert.Equal(t, http.StatusCreated, w.Code)
 
 		// Try duplicate
-		req = httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users", bytes.NewReader(mustJSON(body)))
+		req = newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w = httptest.NewRecorder()
 		r.ServeHTTP(w, req)
@@ -402,7 +408,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 			"email":      "invalid-email",
 			"first_name": "Invalid",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 
@@ -416,7 +422,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 			"email":      "",
 			"first_name": "Empty",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 
@@ -430,7 +436,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 			"email":      "noname@example.com",
 			"first_name": "",
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 
@@ -481,7 +487,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 				{"email": "bulk2@example.com", "first_name": "BulkTwo"},
 			},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users/bulk", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users/bulk", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 
@@ -494,7 +500,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 		body := map[string]interface{}{
 			"users": []map[string]string{},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users/bulk", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users/bulk", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 
@@ -509,7 +515,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 				{"email": "invalid-email", "first_name": "Invalid"},
 			},
 		}
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/admin/approved-users/bulk", bytes.NewReader(mustJSON(body)))
+		req := newJSONRequest(http.MethodPost, "/api/v1/admin/approved-users/bulk", body)
 		req.Header.Set("Authorization", "Bearer "+adminToken)
 		w := httptest.NewRecorder()
 

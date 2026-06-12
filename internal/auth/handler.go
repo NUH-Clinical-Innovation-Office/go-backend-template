@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	apiTypes "github.com/oapi-codegen/runtime/types"
 	"github.com/your-org/go-backend-template/internal/api"
 	"github.com/your-org/go-backend-template/internal/domain"
@@ -299,7 +298,7 @@ func (h *Handler) BulkCreateApprovedUsers(w http.ResponseWriter, r *http.Request
 
 // DeleteApprovedUser implements api.ServerInterface.
 func (h *Handler) DeleteApprovedUser(w http.ResponseWriter, r *http.Request, id apiTypes.UUID) {
-	if err := h.admin.DeleteApprovedUser(r.Context(), uuid.UUID(id)); err != nil {
+	if err := h.admin.DeleteApprovedUser(r.Context(), id); err != nil {
 		h.logger.Error("delete approved user failed", zap.Error(err))
 		if errors.Is(err, ErrApprovedUserNotFound) {
 			http2.RespondError(w, http.StatusNotFound, "approved user not found")

@@ -22,6 +22,8 @@ func mountOpenAPISpec(r chi.Router) {
 			return
 		}
 		w.Header().Set("Content-Type", "application/yaml")
-		_, _ = w.Write(out)
+		if _, err := w.Write(out); err != nil {
+			return
+		}
 	})
 }
