@@ -13,6 +13,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	oapimiddleware "github.com/oapi-codegen/nethttp-middleware"
+	"github.com/your-org/go-backend-template/internal/api"
 	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/logging"
@@ -29,6 +31,15 @@ type HealthResponse struct {
 	Status   string `json:"status"`
 	Database string `json:"database,omitempty"`
 }
+
+// apiServer composes the domain handlers into a single api.ServerInterface.
+// Named fields avoid the Handler-name collision between the two handler types.
+type apiServer struct {
+	todo *todo.Handler
+	auth *auth.Handler
+}
+
+var _ api.ServerInterface = (*apiServer)(nil)
 
 // New creates a new Chi router with all middleware and routes configured.
 //
@@ -67,6 +78,16 @@ func New(
 	r.Get("/health", healthHandlerWithDB(checkDBHealth))
 
 	mountSwagger(r, swaggerEnabled)
+	if swaggerEnabled {
+		mountOpenAPISpec(r)
+	}
+
+	apiSrv := &apiServer{todo: todoHandler, auth: authHandler}
+	wrapper := api.ServerInterfaceWrapper{Handler: apiSrv}
+	swagger, err := api.GetSwagger()
+	if err == nil {
+		swagger.Servers = nil
+	}
 
 	// API routes: timeouts + per-IP rate limit.
 	r.Route("/api/v1", func(r chi.Router) {
@@ -74,36 +95,36 @@ func New(
 			timeoutMiddleware(30*time.Second),
 			rateLimitMiddleware(rateLimitCfg),
 		)
+		if swagger != nil {
+			r.Use(oapimiddleware.OapiRequestValidatorWithOptions(swagger, &oapimiddleware.Options{
+				ErrorHandler: openAPIValidationErrorHandler,
+			}))
+		}
 
 		// Public endpoints
-		r.Post("/auth/register", authHandler.RegisterHandler)
-		r.Post("/auth/login", authHandler.LoginHandler)
+		r.Post("/auth/register", wrapper.RegisterUser)
+		r.Post("/auth/login", wrapper.LoginUser)
 
 		// Protected endpoints (require authentication)
 		r.Group(func(r chi.Router) {
 			r.Use(appmiddleware.RequireAuth(authSvc))
 
-			r.Route("/todos", func(r chi.Router) {
-				r.Get("/", todoHandler.ListHandler)
-				r.Post("/", todoHandler.CreateHandler)
-				r.Get("/{id}", todoHandler.GetHandler)
-				r.Patch("/{id}", todoHandler.UpdateHandler)
-				r.Delete("/{id}", todoHandler.DeleteHandler)
-			})
-
-			r.Get("/me", authHandler.GetMeHandler)
+			r.Get("/todos", wrapper.ListTodos)
+			r.Post("/todos", wrapper.CreateTodo)
+			r.Get("/todos/{id}", wrapper.GetTodo)
+			r.Patch("/todos/{id}", wrapper.UpdateTodo)
+			r.Delete("/todos/{id}", wrapper.DeleteTodo)
+			r.Get("/me", wrapper.GetCurrentUser)
 		})
 
 		// Admin-only endpoints
 		r.Group(func(r chi.Router) {
 			r.Use(appmiddleware.RequireAdmin(authSvc))
 
-			r.Route("/admin/approved-users", func(r chi.Router) {
-				r.Get("/", authHandler.ListApprovedUsersHandler)
-				r.Post("/", authHandler.CreateApprovedUserHandler)
-				r.Post("/bulk", authHandler.BulkCreateApprovedUsersHandler)
-				r.Delete("/{id}", authHandler.DeleteApprovedUserHandler)
-			})
+			r.Get("/admin/approved-users", wrapper.ListApprovedUsers)
+			r.Post("/admin/approved-users", wrapper.CreateApprovedUser)
+			r.Post("/admin/approved-users/bulk", wrapper.BulkCreateApprovedUsers)
+			r.Delete("/admin/approved-users/{id}", wrapper.DeleteApprovedUser)
 		})
 	})
 
