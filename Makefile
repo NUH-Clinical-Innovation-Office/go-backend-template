@@ -1,4 +1,4 @@
-.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy clean install-tools openapi sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci rename-org
+.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy update-modules clean install-tools openapi sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci rename-org
 
 # Variables
 BINARY_NAME=go-backend-template
@@ -40,6 +40,10 @@ vet: ## Run go vet
 	@go vet ./...
 
 tidy: ## Tidy go modules
+	@go mod tidy
+
+update-modules: ## Update Go modules to their latest compatible versions
+	@go get -u ./...
 	@go mod tidy
 
 clean: ## Clean build artifacts
