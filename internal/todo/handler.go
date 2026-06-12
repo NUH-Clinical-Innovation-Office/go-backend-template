@@ -6,27 +6,13 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+	apiTypes "github.com/oapi-codegen/runtime/types"
+	"github.com/your-org/go-backend-template/internal/api"
 	"github.com/your-org/go-backend-template/internal/domain"
 	http2 "github.com/your-org/go-backend-template/internal/http"
 	"github.com/your-org/go-backend-template/internal/middleware"
-	"github.com/your-org/go-backend-template/internal/validator"
 )
-
-// CreateTodoRequest represents a create todo request
-type CreateTodoRequest struct {
-	Title       string  `json:"title"`
-	Description *string `json:"description"`
-	DueDate     *string `json:"due_date"`
-}
-
-// UpdateTodoRequest represents a PATCH update request. All fields are
-// optional; nil pointer fields preserve the existing column.
-type UpdateTodoRequest struct {
-	Title       *string `json:"title"`
-	Description *string `json:"description"`
-	IsCompleted *bool   `json:"is_completed"`
-	DueDate     *string `json:"due_date"`
-}
 
 // TodoResponse represents a todo response
 type TodoResponse struct {
@@ -52,17 +38,8 @@ func NewHandler(svc TodoService) *Handler {
 	}
 }
 
-// ListHandler handles listing todos for the current user
-//
-// @Summary      List todos
-// @Tags         todos
-// @Produce      json
-// @Security     BearerAuth
-// @Success      200 {array}  TodoResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /todos [get]
-func (h *Handler) ListHandler(w http.ResponseWriter, r *http.Request) {
+// ListTodos implements api.ServerInterface.
+func (h *Handler) ListTodos(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
 		http2.RespondError(w, http.StatusUnauthorized, "unauthorized")
@@ -83,27 +60,15 @@ func (h *Handler) ListHandler(w http.ResponseWriter, r *http.Request) {
 	http2.RespondJSON(w, http.StatusOK, response)
 }
 
-// CreateHandler handles creating a new todo
-//
-// @Summary      Create todo
-// @Tags         todos
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        body body CreateTodoRequest true "Todo details"
-// @Success      201 {object} TodoResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /todos [post]
-func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
+// CreateTodo implements api.ServerInterface.
+func (h *Handler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
 		http2.RespondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	var req CreateTodoRequest
+	var req api.CreateTodoRequest
 	if err := http2.DecodeJSON(w, r, 1<<20, &req); err != nil {
 		if errors.Is(err, http2.ErrBodyTooLarge) {
 			http2.RespondError(w, http.StatusRequestEntityTooLarge, "request body too large")
@@ -113,18 +78,7 @@ func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validator.ValidateCreateTodoTitle(req.Title); err != nil {
-		http2.RespondError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	dueDate, err := http2.ParseDueDate(req.DueDate)
-	if err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
-		return
-	}
-
-	todo, err := h.svc.Create(r.Context(), user.ID, req.Title, req.Description, dueDate)
+	todo, err := h.svc.Create(r.Context(), user.ID, req.Title, req.Description, req.DueDate)
 	if err != nil {
 		http2.RespondError(w, http.StatusInternalServerError, "internal server error")
 		return
@@ -133,33 +87,15 @@ func (h *Handler) CreateHandler(w http.ResponseWriter, r *http.Request) {
 	http2.RespondJSON(w, http.StatusCreated, toTodoResponse(todo))
 }
 
-// GetHandler handles getting a single todo by ID
-//
-// @Summary      Get todo
-// @Tags         todos
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id path string true "Todo UUID"
-// @Success      200 {object} TodoResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      404 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /todos/{id} [get]
-func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
+// GetTodo implements api.ServerInterface.
+func (h *Handler) GetTodo(w http.ResponseWriter, r *http.Request, id apiTypes.UUID) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
 		http2.RespondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	id, ok := http2.ParseUUIDParam(r, "id")
-	if !ok {
-		http2.RespondError(w, http.StatusBadRequest, "invalid id")
-		return
-	}
-
-	todo, err := h.svc.GetByID(r.Context(), id, user.ID)
+	todo, err := h.svc.GetByID(r.Context(), uuid.UUID(id), user.ID)
 	if err != nil {
 		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
@@ -172,35 +108,15 @@ func (h *Handler) GetHandler(w http.ResponseWriter, r *http.Request) {
 	http2.RespondJSON(w, http.StatusOK, toTodoResponse(todo))
 }
 
-// UpdateHandler handles updating a todo
-//
-// @Summary      Update todo
-// @Tags         todos
-// @Accept       json
-// @Produce      json
-// @Security     BearerAuth
-// @Param        id   path string           true "Todo UUID"
-// @Param        body body UpdateTodoRequest true "Updated todo"
-// @Success      200 {object} TodoResponse
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      404 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /todos/{id} [patch]
-func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
+// UpdateTodo implements api.ServerInterface.
+func (h *Handler) UpdateTodo(w http.ResponseWriter, r *http.Request, id apiTypes.UUID) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
 		http2.RespondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	id, ok := http2.ParseUUIDParam(r, "id")
-	if !ok {
-		http2.RespondError(w, http.StatusBadRequest, "invalid id")
-		return
-	}
-
-	var req UpdateTodoRequest
+	var req api.UpdateTodoRequest
 	if err := http2.DecodeJSON(w, r, 1<<20, &req); err != nil {
 		if errors.Is(err, http2.ErrBodyTooLarge) {
 			http2.RespondError(w, http.StatusRequestEntityTooLarge, "request body too large")
@@ -210,18 +126,7 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := validator.ValidateUpdateTodoTitle(req.Title); err != nil {
-		http2.RespondError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	dueDate, err := http2.ParseDueDate(req.DueDate)
-	if err != nil {
-		http2.RespondError(w, http.StatusBadRequest, "invalid due_date format, expected RFC3339")
-		return
-	}
-
-	todo, err := h.svc.Update(r.Context(), id, user.ID, req.Title, req.Description, req.IsCompleted, dueDate)
+	todo, err := h.svc.Update(r.Context(), uuid.UUID(id), user.ID, req.Title, req.Description, req.IsCompleted, req.DueDate)
 	if err != nil {
 		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
@@ -234,32 +139,15 @@ func (h *Handler) UpdateHandler(w http.ResponseWriter, r *http.Request) {
 	http2.RespondJSON(w, http.StatusOK, toTodoResponse(todo))
 }
 
-// DeleteHandler handles deleting a todo
-//
-// @Summary      Delete todo
-// @Tags         todos
-// @Security     BearerAuth
-// @Param        id path string true "Todo UUID"
-// @Success      204
-// @Failure      400 {object} http.ErrorResponse
-// @Failure      401 {object} http.ErrorResponse
-// @Failure      404 {object} http.ErrorResponse
-// @Failure      500 {object} http.ErrorResponse
-// @Router       /todos/{id} [delete]
-func (h *Handler) DeleteHandler(w http.ResponseWriter, r *http.Request) {
+// DeleteTodo implements api.ServerInterface.
+func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request, id apiTypes.UUID) {
 	user := middleware.UserFromContext(r.Context())
 	if user == nil {
 		http2.RespondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
-	id, ok := http2.ParseUUIDParam(r, "id")
-	if !ok {
-		http2.RespondError(w, http.StatusBadRequest, "invalid id")
-		return
-	}
-
-	err := h.svc.Delete(r.Context(), id, user.ID)
+	err := h.svc.Delete(r.Context(), uuid.UUID(id), user.ID)
 	if err != nil {
 		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
