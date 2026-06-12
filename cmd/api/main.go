@@ -1,12 +1,3 @@
-// @title           Go Backend Template API
-// @version         1.0
-// @description     REST API for go-backend-template
-// @host            localhost:8080
-// @BasePath        /api/v1
-// @securityDefinitions.apikey BearerAuth
-// @in              header
-// @name            Authorization
-
 // Command api is the main entry point for the API server.
 package main
 
