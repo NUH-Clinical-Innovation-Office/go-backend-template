@@ -79,6 +79,10 @@ func (h *Handler) CreateTodo(w http.ResponseWriter, r *http.Request) {
 
 	todo, err := h.svc.Create(r.Context(), user.ID, req.Title, req.Description, req.DueDate)
 	if err != nil {
+		if errors.Is(err, ErrInvalidTodoParams) {
+			http2.RespondError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		http2.RespondError(w, http.StatusInternalServerError, "internal server error")
 		return
 	}
@@ -96,7 +100,7 @@ func (h *Handler) GetTodo(w http.ResponseWriter, r *http.Request, id apiTypes.UU
 
 	todo, err := h.svc.GetByID(r.Context(), id, user.ID)
 	if err != nil {
-		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
+		if errors.Is(err, ErrTodoNotFound) || errors.Is(err, ErrTodoNotOwned) {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
 			return
 		}
@@ -127,8 +131,12 @@ func (h *Handler) UpdateTodo(w http.ResponseWriter, r *http.Request, id apiTypes
 
 	todo, err := h.svc.Update(r.Context(), id, user.ID, req.Title, req.Description, req.IsCompleted, req.DueDate)
 	if err != nil {
-		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
+		if errors.Is(err, ErrTodoNotFound) || errors.Is(err, ErrTodoNotOwned) {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
+			return
+		}
+		if errors.Is(err, ErrInvalidTodoParams) {
+			http2.RespondError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		http2.RespondError(w, http.StatusInternalServerError, "internal server error")
@@ -148,7 +156,7 @@ func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request, id apiTypes
 
 	err := h.svc.Delete(r.Context(), id, user.ID)
 	if err != nil {
-		if err == ErrTodoNotFound || err == ErrTodoNotOwned {
+		if errors.Is(err, ErrTodoNotFound) || errors.Is(err, ErrTodoNotOwned) {
 			http2.RespondError(w, http.StatusNotFound, "todo not found")
 			return
 		}
