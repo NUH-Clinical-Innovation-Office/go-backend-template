@@ -45,8 +45,11 @@ services:
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-*}
       # Go runtime soft memory limit (~80% of the container memory budget).
       - GOMEMLIMIT=${GOMEMLIMIT:-214958080}
+      # Prometheus metrics served on a dedicated port (fleet-wide standard).
+      - METRICS_PORT=${METRICS_PORT:-9464}
     ports:
       - "8080:8080"
+      - "9464:9464"
     depends_on:
       postgres:
         condition: service_healthy

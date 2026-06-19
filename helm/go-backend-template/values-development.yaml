@@ -17,9 +17,9 @@ serviceAccount:
   name: ""
 
 podAnnotations:
-  # Prometheus scraping annotations — Go service serves /metrics on :8080.
+  # Prometheus scraping annotations — metrics served on the dedicated :9464 port.
   prometheus.io/scrape: "true"
-  prometheus.io/port: "8080"
+  prometheus.io/port: "9464"
   prometheus.io/path: "/metrics"
 
 podLabels:
@@ -42,6 +42,7 @@ securityContext:
 api:
   enabled: true
   port: 8080
+  metricsPort: 9464
   resources:
     limits:
       cpu: 250m
@@ -83,7 +84,7 @@ service:
 networkPolicy:
   enabled: true
   frontendPodLabelName: ""
-  # Allow Prometheus (nuh-cio namespace) to scrape /metrics on :8080.
+  # Allow Prometheus (nuh-cio namespace) to scrape /metrics on :9464.
   extraIngress:
     - from:
         - namespaceSelector:
@@ -91,7 +92,7 @@ networkPolicy:
               kubernetes.io/metadata.name: nuh-cio
       ports:
         - protocol: TCP
-          port: 8080
+          port: 9464
 
 externalDatabase:
   host: ""

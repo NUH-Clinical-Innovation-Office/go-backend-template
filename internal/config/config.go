@@ -26,6 +26,7 @@ type Config struct {
 type ServerConfig struct {
 	Host            string
 	Port            int
+	MetricsPort     int
 	ReadTimeout     time.Duration
 	WriteTimeout    time.Duration
 	IdleTimeout     time.Duration
@@ -93,6 +94,7 @@ func Load() (*Config, error) {
 		Server: ServerConfig{
 			Host:            getEnv("SERVER_HOST", "0.0.0.0"),
 			Port:            p.int("SERVER_PORT", 8080),
+			MetricsPort:     p.int("METRICS_PORT", 9464),
 			ReadTimeout:     p.duration("SERVER_READ_TIMEOUT", 30*time.Second),
 			WriteTimeout:    p.duration("SERVER_WRITE_TIMEOUT", 30*time.Second),
 			IdleTimeout:     p.duration("SERVER_IDLE_TIMEOUT", 120*time.Second),

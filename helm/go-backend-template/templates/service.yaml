@@ -16,6 +16,10 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.api.metricsPort | default 9464 }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
   selector:
     {{- include "go-backend-template.apiSelectorLabels" . | nindent 4 }}
 {{- end }}

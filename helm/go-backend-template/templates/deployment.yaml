@@ -43,6 +43,9 @@ spec:
         - name: http
           containerPort: {{ .Values.api.port }}
           protocol: TCP
+        - name: metrics
+          containerPort: {{ .Values.api.metricsPort | default 9464 }}
+          protocol: TCP
         env:
         - name: DATABASE_HOST
           value: {{ .Values.externalDatabase.host | quote }}
@@ -71,6 +74,9 @@ spec:
         # Update this value if you change resources.limits.memory.
         - name: GOMEMLIMIT
           value: {{ .Values.api.gomemlimit | default "214958080" | quote }}
+        # Prometheus /metrics HTTP port (dedicated, separate from the app port).
+        - name: METRICS_PORT
+          value: {{ .Values.api.metricsPort | default 9464 | quote }}
         {{- with .Values.env }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

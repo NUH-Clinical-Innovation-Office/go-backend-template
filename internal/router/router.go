@@ -15,7 +15,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	oapimiddleware "github.com/oapi-codegen/nethttp-middleware"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/your-org/go-backend-template/internal/api"
 	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
@@ -78,11 +77,6 @@ func New(
 	// Public root routes (not rate-limited, not under the API timeout).
 	r.Get("/", rootHandler())
 	r.Get("/health", healthHandlerWithDB(checkDBHealth))
-
-	// Prometheus metrics — exposes Go runtime + default-registry collectors.
-	// Scraped by Prometheus via pod annotations (prometheus.io/path=/metrics).
-	// Outside /api/v1 so it is never rate-limited or auth-gated.
-	r.Handle("/metrics", promhttp.Handler())
 
 	mountSwagger(r, swaggerEnabled)
 	if swaggerEnabled {
