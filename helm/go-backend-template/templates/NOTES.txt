@@ -1,0 +1,14 @@
+{{ .Chart.Name }} has been deployed.
+
+API Service: {{ include "go-backend-template.fullname" . }}
+Namespace: {{ .Release.Namespace }}
+
+Port-forward to test:
+  kubectl port-forward svc/{{ include "go-backend-template.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }} -n {{ .Release.Namespace }}
+  curl http://localhost:{{ .Values.service.port }}/health
+  curl http://localhost:{{ .Values.service.port }}/metrics
+
+{{- if .Values.api.autoscaling.enabled }}
+
+Autoscaling is enabled (min {{ .Values.api.autoscaling.minReplicas }}, max {{ .Values.api.autoscaling.maxReplicas }}).
+{{- end }}

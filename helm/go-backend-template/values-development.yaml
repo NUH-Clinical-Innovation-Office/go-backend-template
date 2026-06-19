@@ -1,0 +1,151 @@
+# Development deployment values for go-backend-template.
+
+image:
+  repository: ghcr.io/your-org/go-backend-template
+  pullPolicy: IfNotPresent
+  tag: "" # Set by CI/CD pipeline
+
+imagePullSecrets:
+  - name: ghcr-credentials
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations:
+  # Prometheus scraping annotations — Go service serves /metrics on :8080.
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+podLabels:
+  owner: nuh-cio
+  project-name: go-backend-template
+  project-name-short: gbt
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+
+api:
+  enabled: true
+  port: 8080
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # GOMEMLIMIT — see values.yaml. Same 256Mi limit in dev, so same value.
+  gomemlimit: "214958080"
+  terminationGracePeriodSeconds: 30
+  nodeSelector:
+    node-role: nuh-cio-general
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - api
+            topologyKey: kubernetes.io/hostname
+  autoscaling:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 75
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  annotations: {}
+
+networkPolicy:
+  enabled: true
+  frontendPodLabelName: ""
+  # Allow Prometheus (nuh-cio namespace) to scrape /metrics on :8080.
+  extraIngress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: nuh-cio
+      ports:
+        - protocol: TCP
+          port: 8080
+
+externalDatabase:
+  host: ""
+  port: 5432
+  database: app
+  username: postgres
+  sslMode: "require"
+  existingSecret: "go-backend-template-db"
+  existingSecretPasswordKey: "password"
+
+jwt:
+  existingSecret: "go-backend-template-jwt"
+  existingSecretKey: "JWT_SECRET_KEY"
+
+livenessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  enabled: true
+  httpGet:
+    path: /health
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+env:
+  - name: SERVER_PORT
+    value: "8080"
+  - name: LOG_LEVEL
+    value: "info"
+  - name: LOG_FORMAT
+    value: "json"
+  - name: ENVIRONMENT
+    value: "production"
+  - name: SERVICE_NAME
+    value: "go-backend-template"
+  - name: SERVICE_VERSION
+    value: "0.1.0"
+  - name: TRACING_ENABLED
+    value: "true"
+  - name: OTEL_EXPORTER_OTLP_ENDPOINT
+    value: "http://opentelemetry-collector.nuh-cio.svc.cluster.local:4317"
+  - name: OTEL_EXPORTER_OTLP_INSECURE
+    value: "true"
+  - name: OTEL_TRACE_SAMPLING_RATIO
+    value: "0.1"
+
+envFrom: []
