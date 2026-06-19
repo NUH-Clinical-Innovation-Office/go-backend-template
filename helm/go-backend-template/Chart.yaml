@@ -1,0 +1,16 @@
+apiVersion: v2
+name: go-backend-template
+description: A Helm chart for the Go Backend Template - HTTP API service
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - go
+  - http
+  - backend
+  - template
+maintainers:
+  - name: NUH Healthcare Team
+home: https://github.com/your-org/go-backend-template
+sources:
+  - https://github.com/your-org/go-backend-template
