@@ -8,6 +8,8 @@ A production-ready Go backend template with Chi router, sqlc, and OpenTelemetry.
 ## Table of Contents
 
 - [Project Description](#project-description)
+- [Renaming this template](#renaming-this-template)
+- [CI/CD Setup](#cicd-setup)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
@@ -53,6 +55,56 @@ update the placeholders in `.env.example` (`CORS_ALLOWED_ORIGINS`,
 `SERVICE_NAME`, the OTel endpoint, etc.) and the `DOCKER_IMAGE` variable
 in the Makefile. Commit the rename as the first change so it is easy to
 revert.
+
+## CI/CD Setup
+
+The template ships self-contained `reusable-*.yml` workflows. If your project
+uses the shared NUH pipeline (GHCR images plus AWS EKS), run the CI setup script
+to generate workflows wired to the reusable workflows in
+[`NUH-Clinical-Innovation-Office/ci-workflows`](https://github.com/NUH-Clinical-Innovation-Office/ci-workflows):
+
+```sh
+chmod +x scripts/setup-ci.sh
+./scripts/setup-ci.sh
+```
+
+The script will:
+
+- Read the module path from `go.mod` to default the project name
+- Ask for the build architecture (`arm64` or `amd64`) and pick the matching runner
+- Ask whether the module needs private NUH module access (`gh_private` plus a `GH_PAT` secret)
+- Offer an integration test job, but only if the Makefile defines `test-integration`
+- Offer an OpenAPI codegen drift and spec lint job, but only if `make openapi` and the spec exist
+- Optionally add an AWS EKS development deploy job and a weekly GHCR cleanup workflow
+- Show a configuration summary before writing anything
+
+**What gets generated in `.github/workflows/`:**
+
+| Workflow            | Trigger              | Purpose                                              |
+| ------------------- | -------------------- | ---------------------------------------------------- |
+| `ci.yml`            | Push to `main` + PRs | Lint, test, build; publish, scan, and deploy on push |
+| `deploy.yml`        | Called by `ci.yml`   | Helm deploy to AWS EKS (only if deploy enabled)      |
+| `image-cleanup.yml` | Weekly cron          | Prune old GHCR image versions (optional)             |
+
+Unlike the frontend template, a single `ci.yml` handles both `push` and
+`pull_request`. Jobs that publish images or deploy are gated on
+`github.event_name == 'push' && github.ref == 'refs/heads/main'`, so pull
+requests run checks only and never touch the registry or the cluster.
+
+For how the shared pipeline works — tag pinning, image tag outputs, OIDC
+deploys, and PR isolation — see the
+[`ci-workflows` README](https://github.com/NUH-Clinical-Innovation-Office/ci-workflows#how-the-generated-pipeline-works).
+
+Because the shared pipeline replaces the bundled `reusable-*.yml` workflows, the
+script moves the existing ones to `.github/workflows-backup/` first — nothing is
+deleted. Delete that directory once you are satisfied with the new pipeline.
+
+**Before the first run**, in your GitHub repository settings:
+
+- Allow Actions to access the `ci-workflows` repository (Settings → Actions → General)
+- Set `GH_PAT` if you enabled private Go module access
+- If you enabled deploys, set `AWS_DEV_DEPLOY_ROLE_ARN` (OIDC role) and optionally `IRSA_ROLE_ARN`
+- If you enabled deploys, create a `development` environment (Settings → Environments)
 
 ## Prerequisites
 
