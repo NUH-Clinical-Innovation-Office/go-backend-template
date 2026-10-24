@@ -90,7 +90,7 @@ func New(
 			openAPIValidationErrorHandler(w, err.Error(), http.StatusBadRequest)
 		},
 	}
-	swagger, err := api.GetSwagger()
+	swagger, err := api.GetSpec()
 	if err != nil {
 		swagger = nil
 	}

@@ -41,6 +41,8 @@ This project uses [lefthook](https://github.com/evilmartians/lefthook) for manag
 - sqlc v1.28.0+
 - golang-migrate
 
+oapi-codegen needs no install: it is pinned as a `go tool` in `go.mod`.
+
 Install tools with: `make install-tools`
 
 ### Running Tests
@@ -64,7 +66,7 @@ Before committing, run:
 make verify
 ```
 
-This runs: fmt, vet, lint, sqlc-compile, and test.
+This runs: fmt, vet, lint, sqlc-compile, verify-openapi, and test.
 
 ### CI Pipeline
 

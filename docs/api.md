@@ -16,6 +16,46 @@ Authorization: Bearer <token>
 
 Admin endpoints require the `admin` role in the JWT claims.
 
+## Contract
+
+[`api/openapi.yaml`](../api/openapi.yaml) is the hand-written contract and the
+source of truth for every `/api/v1` endpoint. `make openapi` generates
+`internal/api` from it with oapi-codegen (pinned as a `go tool` in `go.mod`):
+request and response types, the chi server interface, and a typed client.
+
+Four checks hold the contract to the code:
+
+- **Operations.** Handlers implement the generated `api.ServerInterface`, so a
+  spec operation with no handler does not compile.
+- **Routes.** `TestSpecMatchesRouter` (`internal/router/routes_test.go`) walks
+  the chi tree and fails when a `/api/v1` route and the spec disagree in either
+  direction.
+- **Types.** Handlers build responses from the generated `api.*Response` types,
+  so a schema change the handlers have not followed stops compiling.
+- **Responses.** Every response an integration test sends through
+  `newTestRouter` is validated against the spec, status code included
+  (`internal/integration/contract_test.go`).
+
+`make verify-openapi`, part of `make verify` and CI, fails when the committed
+`internal/api` is stale against the spec.
+
+Rules when editing the spec:
+
+- **Describe what the handler actually sends.** A field the handler always
+  writes, possibly as `null`, is `required` and `nullable`. Optional plus
+  nullable generates `omitempty`, which silently drops the `null` from the wire.
+- **Document every status a handler or its middleware can return**, including
+  `401` from `RequireAuth` and `403` from `RequireAdmin`. The response check
+  fails on an undocumented status.
+- **Map generated types at the handler edge.** Domain packages keep their own
+  types; generated names (`Id`, `UserId`) stop at the response mapping.
+- **Never edit `internal/api/*.gen.go` by hand.**
+
+Workflow: edit `api/openapi.yaml`, run `make openapi`, adjust the route in
+`internal/router/router.go` and the handler, then `make verify` and
+`make test-integration`. Commit the spec and the regenerated `internal/api`
+together.
+
 ## Public Endpoints
 
 ### Health Check

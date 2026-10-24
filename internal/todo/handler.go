@@ -4,7 +4,6 @@ package todo
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	apiTypes "github.com/oapi-codegen/runtime/types"
 	"github.com/your-org/go-backend-template/internal/api"
@@ -12,18 +11,6 @@ import (
 	http2 "github.com/your-org/go-backend-template/internal/http"
 	"github.com/your-org/go-backend-template/internal/middleware"
 )
-
-// TodoResponse represents a todo response
-type TodoResponse struct {
-	ID          string     `json:"id"`
-	UserID      string     `json:"user_id"`
-	Title       string     `json:"title"`
-	Description *string    `json:"description"`
-	IsCompleted bool       `json:"is_completed"`
-	DueDate     *time.Time `json:"due_date"`
-	CreatedAt   time.Time  `json:"created_at"`
-	UpdatedAt   time.Time  `json:"updated_at"`
-}
 
 // Handler holds todo dependencies
 type Handler struct {
@@ -51,7 +38,7 @@ func (h *Handler) ListTodos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response := make([]TodoResponse, len(todos))
+	response := make([]api.TodoResponse, len(todos))
 	for i := range todos {
 		response[i] = toTodoResponse(&todos[i])
 	}
@@ -167,10 +154,13 @@ func (h *Handler) DeleteTodo(w http.ResponseWriter, r *http.Request, id apiTypes
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func toTodoResponse(todo *domain.Todo) TodoResponse {
-	return TodoResponse{
-		ID:          todo.ID.String(),
-		UserID:      todo.UserID.String(),
+// toTodoResponse maps a domain todo onto the generated wire type, so a
+// schema change in api/openapi.yaml that this mapping has not followed
+// stops the build.
+func toTodoResponse(todo *domain.Todo) api.TodoResponse {
+	return api.TodoResponse{
+		Id:          todo.ID.String(),
+		UserId:      todo.UserID.String(),
 		Title:       todo.Title,
 		Description: todo.Description,
 		IsCompleted: todo.IsCompleted,

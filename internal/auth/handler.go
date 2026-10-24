@@ -4,7 +4,6 @@ package auth
 import (
 	"errors"
 	"net/http"
-	"time"
 
 	apiTypes "github.com/oapi-codegen/runtime/types"
 	"github.com/your-org/go-backend-template/internal/api"
@@ -30,22 +29,6 @@ func writeDecodeError(w http.ResponseWriter, err error) {
 		return
 	}
 	http2.RespondError(w, http.StatusBadRequest, "invalid request body")
-}
-
-// AuthResponse represents an authentication response
-type AuthResponse struct {
-	Token     string `json:"token"`
-	TokenType string `json:"token_type"`
-}
-
-// UserResponse represents a user response
-type UserResponse struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	FirstName string    `json:"first_name"`
-	IsActive  bool      `json:"is_active"`
-	Roles     []string  `json:"roles"`
-	CreatedAt time.Time `json:"created_at"`
 }
 
 // Handler holds auth dependencies
@@ -101,7 +84,7 @@ func (h *Handler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http2.RespondJSON(w, http.StatusCreated, AuthResponse{
+	http2.RespondJSON(w, http.StatusCreated, api.AuthResponse{
 		Token:     token,
 		TokenType: "bearer",
 	})
@@ -134,7 +117,7 @@ func (h *Handler) LoginUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http2.RespondJSON(w, http.StatusOK, AuthResponse{
+	http2.RespondJSON(w, http.StatusOK, api.AuthResponse{
 		Token:     token,
 		TokenType: "bearer",
 	})
@@ -160,8 +143,8 @@ func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 		firstName = user.ApprovedUser.FirstName
 	}
 
-	http2.RespondJSON(w, http.StatusOK, UserResponse{
-		ID:        user.ID.String(),
+	http2.RespondJSON(w, http.StatusOK, api.UserResponse{
+		Id:        user.ID.String(),
 		Email:     email,
 		FirstName: firstName,
 		IsActive:  user.IsActive,
@@ -170,21 +153,15 @@ func (h *Handler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ApprovedUserResponse represents an approved user response
-type ApprovedUserResponse struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	FirstName string    `json:"first_name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-}
-
-func toApprovedUserResponse(au *domain.ApprovedUser) *ApprovedUserResponse {
+// toApprovedUserResponse maps a domain approved user onto the generated wire
+// type, so a schema change in api/openapi.yaml that this mapping has not
+// followed stops the build.
+func toApprovedUserResponse(au *domain.ApprovedUser) *api.ApprovedUserResponse {
 	if au == nil {
 		return nil
 	}
-	return &ApprovedUserResponse{
-		ID:        au.ID.String(),
+	return &api.ApprovedUserResponse{
+		Id:        au.ID.String(),
 		Email:     au.Email,
 		FirstName: au.FirstName,
 		CreatedAt: au.CreatedAt,
@@ -192,8 +169,8 @@ func toApprovedUserResponse(au *domain.ApprovedUser) *ApprovedUserResponse {
 	}
 }
 
-func toApprovedUserResponses(aus []*domain.ApprovedUser) []*ApprovedUserResponse {
-	result := make([]*ApprovedUserResponse, 0, len(aus))
+func toApprovedUserResponses(aus []*domain.ApprovedUser) []*api.ApprovedUserResponse {
+	result := make([]*api.ApprovedUserResponse, 0, len(aus))
 	for _, au := range aus {
 		result = append(result, toApprovedUserResponse(au))
 	}

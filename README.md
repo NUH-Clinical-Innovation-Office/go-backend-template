@@ -232,6 +232,10 @@ make migrate-down   # Rollback last migration
 make migrate-reset  # Reset database (down then up)
 make migrate-version # Show current migration version
 
+# OpenAPI
+make openapi         # Generate internal/api from api/openapi.yaml
+make verify-openapi  # Fail if internal/api is stale against the spec
+
 # SQLC
 make sqlc-gen        # Generate sqlc code
 make sqlc-compile   # Validate sqlc schema/queries without generating
@@ -240,7 +244,7 @@ make sqlc-compile   # Validate sqlc schema/queries without generating
 make docker-build   # Build Docker image
 
 # CI/CD
-make verify          # Run all verification steps (fmt, vet, lint, sqlc-compile, test)
+make verify          # Run all verification steps (fmt, vet, lint, sqlc-compile, verify-openapi, test)
 make ci             # Run full CI pipeline
 
 # Maintenance
