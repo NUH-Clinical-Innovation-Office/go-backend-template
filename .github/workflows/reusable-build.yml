@@ -74,6 +74,32 @@ jobs:
       - name: Build binary
         run: go build -v -o bin/go-backend-template ./cmd/api
 
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          # Full history so gitleaks scans every commit, not just the tip.
+          fetch-depth: 0
+
+      # Install the CLI directly: gitleaks-action requires a paid license for organization repos.
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+      # Known false positives are listed in .gitleaksignore.
+      - name: Scan git history for secrets
+        run: gitleaks git --no-banner --redact --verbose .
+
   security-scan:
     name: Security Scan (Source)
     runs-on: ubuntu-latest

@@ -1,0 +1,14 @@
+# Truncated example JWTs ("eyJhbGciOiJIUzI1NiIs...") in older revisions of docs/api.md.
+# Not real secrets; fingerprints come from `gitleaks git --report-format json`.
+038b88f0bd82c785a5c3588708be6103db1d83bb:docs/api.md:generic-api-key:89
+038b88f0bd82c785a5c3588708be6103db1d83bb:docs/api.md:generic-api-key:120
+a40c29c6432d5bd7701e4890d36c8935bcc515d9:docs/api.md:generic-api-key:82
+a40c29c6432d5bd7701e4890d36c8935bcc515d9:docs/api.md:generic-api-key:113
+8e5f69c0c1c4dd14436ac391072f13ef3d09ca82:docs/api.md:generic-api-key:77
+8e5f69c0c1c4dd14436ac391072f13ef3d09ca82:docs/api.md:generic-api-key:108
+0de4569a9be380555b20c733bca1231af036cbeb:docs/api.md:generic-api-key:105
+0de4569a9be380555b20c733bca1231af036cbeb:docs/api.md:generic-api-key:154
+10b824fd4f24afb572904b9618be7b723a2cdec7:docs/api.md:generic-api-key:76
+10b824fd4f24afb572904b9618be7b723a2cdec7:docs/api.md:generic-api-key:107
+68b67bf66c7d7db7c06a22f085fd350894860439:docs/api.md:generic-api-key:81
+68b67bf66c7d7db7c06a22f085fd350894860439:docs/api.md:generic-api-key:116
