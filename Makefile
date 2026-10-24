@@ -1,4 +1,4 @@
-.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy update-modules clean install-tools openapi sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci rename-org
+.PHONY: help build build-migrate run test test-unit test-integration test-coverage lint fmt vet tidy update-modules clean install-tools openapi verify-openapi sqlc-gen sqlc-compile migrate-up migrate-down migrate-reset migrate-version migrate-force docker-build verify ci rename-org
 
 # Variables
 BINARY_NAME=go-backend-template
@@ -51,14 +51,23 @@ clean: ## Clean build artifacts
 	@rm -f coverage.out coverage.html
 
 install-tools: ## Install required tools
-	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 	@go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.28.0
-	@go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.4.1
 
 openapi: ## Generate Go code from api/openapi.yaml (run after editing the spec)
-	@oapi-codegen -config api/cfg/types.yaml api/openapi.yaml
-	@oapi-codegen -config api/cfg/server.yaml api/openapi.yaml
-	@oapi-codegen -config api/cfg/client.yaml api/openapi.yaml
+	@go tool oapi-codegen -config api/cfg/types.yaml api/openapi.yaml
+	@go tool oapi-codegen -config api/cfg/server.yaml api/openapi.yaml
+	@go tool oapi-codegen -config api/cfg/client.yaml api/openapi.yaml
+
+verify-openapi: ## Fail if internal/api is stale against api/openapi.yaml
+	@tmp=$$(mktemp -d) && status=0 && \
+		for kind in types server client; do \
+			sed "s|^output:.*|output: $$tmp/$$kind.gen.go|" api/cfg/$$kind.yaml > $$tmp/$$kind.yaml && \
+			go tool oapi-codegen -config $$tmp/$$kind.yaml api/openapi.yaml && \
+			diff -q $$tmp/$$kind.gen.go internal/api/$$kind.gen.go >/dev/null || status=1; \
+		done; \
+		rm -rf $$tmp; \
+		if [ $$status -ne 0 ]; then echo "internal/api is stale: run 'make openapi' and commit"; exit 1; fi
 
 sqlc-gen: ## Generate sqlc code (re-run after any new migration is added)
 	@sqlc generate
@@ -84,7 +93,7 @@ migrate-force: ## Force migration to specific version (requires VERSION=number)
 docker-build: ## Build Docker image
 	@docker build -t $(DOCKER_IMAGE) .
 
-verify: fmt vet lint sqlc-compile test ## Run all verification steps
+verify: fmt vet lint sqlc-compile verify-openapi test ## Run all verification steps
 	@echo "All verification steps completed successfully!"
 
 ci: verify ## Run CI pipeline

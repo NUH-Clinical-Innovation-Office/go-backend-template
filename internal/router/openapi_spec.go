@@ -11,7 +11,7 @@ import (
 // mountOpenAPISpec serves the embedded authored spec for Swagger UI.
 func mountOpenAPISpec(r chi.Router) {
 	r.Get("/openapi.yaml", func(w http.ResponseWriter, _ *http.Request) {
-		swagger, err := api.GetSwagger()
+		swagger, err := api.GetSpec()
 		if err != nil {
 			http.Error(w, "spec unavailable", http.StatusInternalServerError)
 			return

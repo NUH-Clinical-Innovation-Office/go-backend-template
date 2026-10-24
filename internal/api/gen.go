@@ -3,6 +3,6 @@
 // after editing api/openapi.yaml.
 package api
 
-//go:generate oapi-codegen -config ../../api/cfg/types.yaml ../../api/openapi.yaml
-//go:generate oapi-codegen -config ../../api/cfg/server.yaml ../../api/openapi.yaml
-//go:generate oapi-codegen -config ../../api/cfg/client.yaml ../../api/openapi.yaml
+//go:generate go tool oapi-codegen -config ../../api/cfg/types.yaml ../../api/openapi.yaml
+//go:generate go tool oapi-codegen -config ../../api/cfg/server.yaml ../../api/openapi.yaml
+//go:generate go tool oapi-codegen -config ../../api/cfg/client.yaml ../../api/openapi.yaml
