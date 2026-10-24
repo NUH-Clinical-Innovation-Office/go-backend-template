@@ -1,0 +1,129 @@
+{{- if .Values.api.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "go-backend-template.fullname" . }}
+  labels:
+    {{- include "go-backend-template.apiLabels" . | nindent 4 }}
+spec:
+  {{- if not .Values.api.autoscaling.enabled }}
+  replicas: {{ .Values.api.autoscaling.minReplicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "go-backend-template.apiSelectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "go-backend-template.apiSelectorLabels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "go-backend-template.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds | default 30 }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: api
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.api.port }}
+          protocol: TCP
+        - name: metrics
+          containerPort: {{ .Values.api.metricsPort | default 9464 }}
+          protocol: TCP
+        env:
+        - name: DATABASE_HOST
+          value: {{ .Values.externalDatabase.host | quote }}
+        - name: DATABASE_PORT
+          value: {{ .Values.externalDatabase.port | quote }}
+        - name: DATABASE_USER
+          value: {{ .Values.externalDatabase.username | quote }}
+        - name: DATABASE_NAME
+          value: {{ .Values.externalDatabase.database | quote }}
+        - name: DATABASE_SSLMODE
+          value: {{ .Values.externalDatabase.sslMode | quote }}
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "go-backend-template.databaseSecretName" . }}
+              key: {{ .Values.externalDatabase.existingSecretPasswordKey }}
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.jwt.existingSecret }}
+              key: {{ .Values.jwt.existingSecretKey }}
+        # GOMEMLIMIT: Go runtime soft memory limit. The runtime reads this env
+        # var directly and runs GC more aggressively as the heap approaches it,
+        # avoiding the kernel OOM-killer. Set to ~80% of api.resources.limits.memory.
+        # For a 256Mi limit: 256 * 1024 * 1024 * 0.80 = 214958080 bytes.
+        # Update this value if you change resources.limits.memory.
+        - name: GOMEMLIMIT
+          value: {{ .Values.api.gomemlimit | default "214958080" | quote }}
+        # Prometheus /metrics HTTP port (dedicated, separate from the app port).
+        - name: METRICS_PORT
+          value: {{ .Values.api.metricsPort | default 9464 | quote }}
+        {{- with .Values.env }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        envFrom:
+        - configMapRef:
+            name: {{ include "go-backend-template.fullname" . }}
+        {{- with .Values.envFrom }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if .Values.livenessProbe.enabled }}
+        livenessProbe:
+          httpGet:
+            path: {{ .Values.livenessProbe.httpGet.path }}
+            port: {{ .Values.livenessProbe.httpGet.port }}
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
+        {{- end }}
+        {{- if .Values.readinessProbe.enabled }}
+        readinessProbe:
+          httpGet:
+            path: {{ .Values.readinessProbe.httpGet.path }}
+            port: {{ .Values.readinessProbe.httpGet.port }}
+          initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+        {{- end }}
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+        resources:
+          {{- toYaml .Values.api.resources | nindent 10 }}
+      volumes:
+      - name: tmp
+        emptyDir: {}
+      {{- with .Values.api.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.api.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

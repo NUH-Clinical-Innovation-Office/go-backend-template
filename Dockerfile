@@ -34,8 +34,8 @@ COPY --from=builder /app/api .
 COPY --from=builder /app/migrate .
 COPY --from=builder /app/migrations ./migrations
 
-# Expose port
-EXPOSE 8080
+# Expose HTTP app port (8080) and Prometheus metrics port (9464)
+EXPOSE 8080 9464
 
 # Run migrations and start API
 CMD ["./api"]

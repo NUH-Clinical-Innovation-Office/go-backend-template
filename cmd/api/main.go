@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/your-org/go-backend-template/internal/auth"
 	"github.com/your-org/go-backend-template/internal/config"
 	"github.com/your-org/go-backend-template/internal/db"
@@ -143,6 +145,24 @@ func startHTTPServer(cfg *config.Config, handler http.Handler, logger *zap.Logge
 		serverErrors <- server.ListenAndServe()
 	}()
 
+	// Dedicated Prometheus metrics server on a separate port (standardized
+	// across the fleet at 9464), kept off the app port so scrape rules and
+	// NetworkPolicy ingress stay uniform regardless of app port.
+	metricsAddr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.MetricsPort)
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metricsServer := &http.Server{
+		Addr:              metricsAddr,
+		Handler:           metricsMux,
+		ReadHeaderTimeout: 5 * time.Second,
+	}
+	go func() {
+		logger.Info("metrics server starting", zap.String("addr", metricsAddr), zap.String("path", "/metrics"))
+		if err := metricsServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("metrics server failed", zap.Error(err))
+		}
+	}()
+
 	select {
 	case err := <-serverErrors:
 		return fmt.Errorf("server error: %w", err)
@@ -151,6 +171,10 @@ func startHTTPServer(cfg *config.Config, handler http.Handler, logger *zap.Logge
 
 		ctx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 		defer cancel()
+
+		if err := metricsServer.Shutdown(ctx); err != nil {
+			logger.Warn("metrics server shutdown failed", zap.Error(err))
+		}
 
 		if err := server.Shutdown(ctx); err != nil {
 			_ = server.Close()
