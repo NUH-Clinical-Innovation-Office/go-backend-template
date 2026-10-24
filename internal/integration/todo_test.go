@@ -28,7 +28,7 @@ func TestTodoCRUD(t *testing.T) {
 	require.NoError(t, err)
 
 	// Setup router
-	r := newTestRouter(authService, authHandler, todoHandler)
+	r := newTestRouter(t, authService, authHandler, todoHandler)
 
 	t.Run("create todo", func(t *testing.T) {
 		body := map[string]string{
@@ -417,7 +417,7 @@ func TestAuthGetMe(t *testing.T) {
 	token, err := authService.Register(ctx, "me@example.com", "Password123", "00000000-0000-0000-0000-000000000011")
 	require.NoError(t, err)
 
-	r := newTestRouter(authService, authHandler, nil)
+	r := newTestRouter(t, authService, authHandler, nil)
 
 	t.Run("get current user", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/me", nil)

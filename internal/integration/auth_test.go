@@ -20,10 +20,12 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
-// newTestRouter builds a router for tests with permissive defaults.
-func newTestRouter(authSvc *auth.Service, authHandler *auth.Handler, todoHandler *todo.Handler) http.Handler {
+// newTestRouter builds a router for tests with permissive defaults. Every
+// response it writes is checked against api/openapi.yaml.
+func newTestRouter(t *testing.T, authSvc *auth.Service, authHandler *auth.Handler, todoHandler *todo.Handler) http.Handler {
+	t.Helper()
 	logger, _ := logging.New("debug", "console")
-	return router.New(
+	return withResponseContract(t, router.New(
 		logger,
 		noop.NewTracerProvider().Tracer("test"),
 		authSvc,
@@ -34,7 +36,7 @@ func newTestRouter(authSvc *auth.Service, authHandler *auth.Handler, todoHandler
 		func() error { return nil },
 		false,
 		nil,
-	)
+	))
 }
 
 func TestAuthRegister(t *testing.T) {
@@ -47,7 +49,7 @@ func TestAuthRegister(t *testing.T) {
 		"INSERT INTO approved_users (id, email, first_name) VALUES ('00000000-0000-0000-0000-000000000001'::uuid, 'test@example.com', 'Test')")
 	require.NoError(t, err)
 
-	r := newTestRouter(nil, authHandler, todoHandler)
+	r := newTestRouter(t, nil, authHandler, todoHandler)
 
 	t.Run("successful registration", func(t *testing.T) {
 		body := map[string]string{
@@ -212,7 +214,7 @@ func TestAuthLogin(t *testing.T) {
 	_, err = authService.Register(ctx, "login@example.com", "Password123", "00000000-0000-0000-0000-000000000002")
 	require.NoError(t, err)
 
-	r := newTestRouter(nil, authHandler, todoHandler)
+	r := newTestRouter(t, nil, authHandler, todoHandler)
 
 	t.Run("successful login", func(t *testing.T) {
 		body := map[string]string{
@@ -327,7 +329,7 @@ func TestAdminApprovedUsers(t *testing.T) {
 		"INSERT INTO user_roles (user_id, role_id) VALUES ((SELECT id FROM users WHERE email = 'admin-test@example.com'), (SELECT id FROM roles WHERE name = 'admin'))")
 	require.NoError(t, err)
 
-	r := newTestRouter(authService, authHandler, todoHandler)
+	r := newTestRouter(t, authService, authHandler, todoHandler)
 
 	t.Run("create approved user", func(t *testing.T) {
 		body := map[string]string{

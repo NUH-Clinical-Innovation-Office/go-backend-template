@@ -259,6 +259,7 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/ApprovedUserResponse' }
         '401': { $ref: '#/components/responses/ErrorResponse' }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
         '500': { $ref: '#/components/responses/ErrorResponse' }
     post:
       operationId: CreateApprovedUser
@@ -277,6 +278,7 @@ paths:
               schema: { $ref: '#/components/schemas/ApprovedUserResponse' }
         '400': { $ref: '#/components/responses/ErrorResponse' }
         '401': { $ref: '#/components/responses/ErrorResponse' }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
         '409': { $ref: '#/components/responses/ErrorResponse' }
         '500': { $ref: '#/components/responses/ErrorResponse' }
   /admin/approved-users/bulk:
@@ -299,6 +301,7 @@ paths:
                 items: { $ref: '#/components/schemas/ApprovedUserResponse' }
         '400': { $ref: '#/components/responses/ErrorResponse' }
         '401': { $ref: '#/components/responses/ErrorResponse' }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
         '500': { $ref: '#/components/responses/ErrorResponse' }
   /admin/approved-users/{id}:
     delete:
@@ -314,6 +317,7 @@ paths:
         '204': { description: No Content }
         '400': { $ref: '#/components/responses/ErrorResponse' }
         '401': { $ref: '#/components/responses/ErrorResponse' }
+        '403': { $ref: '#/components/responses/ErrorResponse' }
         '404': { $ref: '#/components/responses/ErrorResponse' }
         '500': { $ref: '#/components/responses/ErrorResponse' }
 
