@@ -107,7 +107,9 @@ paths:
   /auth/register:
     post:
       operationId: RegisterUser
+      summary: Register a new user
       tags: [auth]
+      security: []
       requestBody:
         required: true
         content:
@@ -126,7 +128,9 @@ paths:
   /auth/login:
     post:
       operationId: LoginUser
+      summary: Log in and obtain an access token
       tags: [auth]
+      security: []
       requestBody:
         required: true
         content:
@@ -144,6 +148,7 @@ paths:
   /me:
     get:
       operationId: GetCurrentUser
+      summary: Get the current user
       tags: [auth]
       security: [{ BearerAuth: [] }]
       responses:
@@ -156,6 +161,7 @@ paths:
   /todos:
     get:
       operationId: ListTodos
+      summary: List todos
       tags: [todos]
       security: [{ BearerAuth: [] }]
       responses:
@@ -170,6 +176,7 @@ paths:
         '500': { $ref: '#/components/responses/ErrorResponse' }
     post:
       operationId: CreateTodo
+      summary: Create a todo
       tags: [todos]
       security: [{ BearerAuth: [] }]
       requestBody:
@@ -189,6 +196,7 @@ paths:
   /todos/{id}:
     get:
       operationId: GetTodo
+      summary: Get a todo
       tags: [todos]
       security: [{ BearerAuth: [] }]
       parameters:
@@ -208,6 +216,7 @@ paths:
         '500': { $ref: '#/components/responses/ErrorResponse' }
     patch:
       operationId: UpdateTodo
+      summary: Update a todo
       tags: [todos]
       security: [{ BearerAuth: [] }]
       parameters:
@@ -232,6 +241,7 @@ paths:
         '500': { $ref: '#/components/responses/ErrorResponse' }
     delete:
       operationId: DeleteTodo
+      summary: Delete a todo
       tags: [todos]
       security: [{ BearerAuth: [] }]
       parameters:
@@ -248,6 +258,7 @@ paths:
   /admin/approved-users:
     get:
       operationId: ListApprovedUsers
+      summary: List approved users
       tags: [admin]
       security: [{ BearerAuth: [] }]
       responses:
@@ -263,6 +274,7 @@ paths:
         '500': { $ref: '#/components/responses/ErrorResponse' }
     post:
       operationId: CreateApprovedUser
+      summary: Approve a user
       tags: [admin]
       security: [{ BearerAuth: [] }]
       requestBody:
@@ -284,6 +296,7 @@ paths:
   /admin/approved-users/bulk:
     post:
       operationId: BulkCreateApprovedUsers
+      summary: Approve users in bulk
       tags: [admin]
       security: [{ BearerAuth: [] }]
       requestBody:
@@ -306,6 +319,7 @@ paths:
   /admin/approved-users/{id}:
     delete:
       operationId: DeleteApprovedUser
+      summary: Remove an approved user
       tags: [admin]
       security: [{ BearerAuth: [] }]
       parameters:

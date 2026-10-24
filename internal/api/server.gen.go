@@ -21,40 +21,40 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-
+	// ListApprovedUsers List approved users
 	// (GET /admin/approved-users)
 	ListApprovedUsers(w http.ResponseWriter, r *http.Request)
-
+	// CreateApprovedUser Approve a user
 	// (POST /admin/approved-users)
 	CreateApprovedUser(w http.ResponseWriter, r *http.Request)
-
+	// BulkCreateApprovedUsers Approve users in bulk
 	// (POST /admin/approved-users/bulk)
 	BulkCreateApprovedUsers(w http.ResponseWriter, r *http.Request)
-
+	// DeleteApprovedUser Remove an approved user
 	// (DELETE /admin/approved-users/{id})
 	DeleteApprovedUser(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
-
+	// LoginUser Log in and obtain an access token
 	// (POST /auth/login)
 	LoginUser(w http.ResponseWriter, r *http.Request)
-
+	// RegisterUser Register a new user
 	// (POST /auth/register)
 	RegisterUser(w http.ResponseWriter, r *http.Request)
-
+	// GetCurrentUser Get the current user
 	// (GET /me)
 	GetCurrentUser(w http.ResponseWriter, r *http.Request)
-
+	// ListTodos List todos
 	// (GET /todos)
 	ListTodos(w http.ResponseWriter, r *http.Request)
-
+	// CreateTodo Create a todo
 	// (POST /todos)
 	CreateTodo(w http.ResponseWriter, r *http.Request)
-
+	// DeleteTodo Delete a todo
 	// (DELETE /todos/{id})
 	DeleteTodo(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
-
+	// GetTodo Get a todo
 	// (GET /todos/{id})
 	GetTodo(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
-
+	// UpdateTodo Update a todo
 	// (PATCH /todos/{id})
 	UpdateTodo(w http.ResponseWriter, r *http.Request, id openapi_types.UUID)
 }
@@ -63,61 +63,73 @@ type ServerInterface interface {
 
 type Unimplemented struct{}
 
+// ListApprovedUsers List approved users
 // (GET /admin/approved-users)
 func (_ Unimplemented) ListApprovedUsers(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// CreateApprovedUser Approve a user
 // (POST /admin/approved-users)
 func (_ Unimplemented) CreateApprovedUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// BulkCreateApprovedUsers Approve users in bulk
 // (POST /admin/approved-users/bulk)
 func (_ Unimplemented) BulkCreateApprovedUsers(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// DeleteApprovedUser Remove an approved user
 // (DELETE /admin/approved-users/{id})
 func (_ Unimplemented) DeleteApprovedUser(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// LoginUser Log in and obtain an access token
 // (POST /auth/login)
 func (_ Unimplemented) LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// RegisterUser Register a new user
 // (POST /auth/register)
 func (_ Unimplemented) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// GetCurrentUser Get the current user
 // (GET /me)
 func (_ Unimplemented) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListTodos List todos
 // (GET /todos)
 func (_ Unimplemented) ListTodos(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// CreateTodo Create a todo
 // (POST /todos)
 func (_ Unimplemented) CreateTodo(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// DeleteTodo Delete a todo
 // (DELETE /todos/{id})
 func (_ Unimplemented) DeleteTodo(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// GetTodo Get a todo
 // (GET /todos/{id})
 func (_ Unimplemented) GetTodo(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// UpdateTodo Update a todo
 // (PATCH /todos/{id})
 func (_ Unimplemented) UpdateTodo(w http.ResponseWriter, r *http.Request, id openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
@@ -506,25 +518,27 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

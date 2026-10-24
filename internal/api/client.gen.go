@@ -91,74 +91,124 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 // The interface specification for the client above.
 type ClientInterface interface {
 
-	// ListApprovedUsers performs a GET /admin/approved-users (the `ListApprovedUsers` operationId) request.
+	// ListApprovedUsers List approved users
+	//
+	// Corresponds with GET /admin/approved-users (the `ListApprovedUsers` operationId).
 	ListApprovedUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateApprovedUserWithBody performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request,
-	// with any type of body and a specified content type.
+	// CreateApprovedUserWithBody Approve a user
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 	CreateApprovedUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateApprovedUser performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request.
+	// CreateApprovedUser Approve a user
+	//
 	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 	CreateApprovedUser(ctx context.Context, body CreateApprovedUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// BulkCreateApprovedUsersWithBody performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request,
-	// with any type of body and a specified content type.
+	// BulkCreateApprovedUsersWithBody Approve users in bulk
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 	BulkCreateApprovedUsersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// BulkCreateApprovedUsers performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request.
+	// BulkCreateApprovedUsers Approve users in bulk
+	//
 	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 	BulkCreateApprovedUsers(ctx context.Context, body BulkCreateApprovedUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteApprovedUser performs a DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId) request.
+	// DeleteApprovedUser Remove an approved user
+	//
+	// Corresponds with DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId).
 	DeleteApprovedUser(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// LoginUserWithBody performs a POST /auth/login (the `LoginUser` operationId) request,
-	// with any type of body and a specified content type.
+	// LoginUserWithBody Log in and obtain an access token
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/login (the `LoginUser` operationId).
 	LoginUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// LoginUser performs a POST /auth/login (the `LoginUser` operationId) request.
+	// LoginUser Log in and obtain an access token
+	//
 	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/login (the `LoginUser` operationId).
 	LoginUser(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// RegisterUserWithBody performs a POST /auth/register (the `RegisterUser` operationId) request,
-	// with any type of body and a specified content type.
+	// RegisterUserWithBody Register a new user
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 	RegisterUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// RegisterUser performs a POST /auth/register (the `RegisterUser` operationId) request.
+	// RegisterUser Register a new user
+	//
 	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 	RegisterUser(ctx context.Context, body RegisterUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetCurrentUser performs a GET /me (the `GetCurrentUser` operationId) request.
+	// GetCurrentUser Get the current user
+	//
+	// Corresponds with GET /me (the `GetCurrentUser` operationId).
 	GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListTodos performs a GET /todos (the `ListTodos` operationId) request.
+	// ListTodos List todos
+	//
+	// Corresponds with GET /todos (the `ListTodos` operationId).
 	ListTodos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateTodoWithBody performs a POST /todos (the `CreateTodo` operationId) request,
-	// with any type of body and a specified content type.
+	// CreateTodoWithBody Create a todo
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with POST /todos (the `CreateTodo` operationId).
 	CreateTodoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateTodo performs a POST /todos (the `CreateTodo` operationId) request.
+	// CreateTodo Create a todo
+	//
 	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with POST /todos (the `CreateTodo` operationId).
 	CreateTodo(ctx context.Context, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteTodo performs a DELETE /todos/{id} (the `DeleteTodo` operationId) request.
+	// DeleteTodo Delete a todo
+	//
+	// Corresponds with DELETE /todos/{id} (the `DeleteTodo` operationId).
 	DeleteTodo(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetTodo performs a GET /todos/{id} (the `GetTodo` operationId) request.
+	// GetTodo Get a todo
+	//
+	// Corresponds with GET /todos/{id} (the `GetTodo` operationId).
 	GetTodo(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateTodoWithBody performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request,
-	// with any type of body and a specified content type.
+	// UpdateTodoWithBody Update a todo
+	//
+	// Takes any type of body and a specified content type.
+	//
+	// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 	UpdateTodoWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UpdateTodo performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request.
+	// UpdateTodo Update a todo
+	//
 	// Takes a body of the `application/json` content type.
+	//
+	// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 	UpdateTodo(ctx context.Context, id openapi_types.UUID, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-// ListApprovedUsers performs a GET /admin/approved-users (the `ListApprovedUsers` operationId) request.
+// ListApprovedUsers List approved users
+//
+// Corresponds with GET /admin/approved-users (the `ListApprovedUsers` operationId).
 func (c *Client) ListApprovedUsers(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListApprovedUsersRequest(c.Server)
 	if err != nil {
@@ -171,8 +221,11 @@ func (c *Client) ListApprovedUsers(ctx context.Context, reqEditors ...RequestEdi
 	return c.Client.Do(req)
 }
 
-// CreateApprovedUserWithBody performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request,
-// with any type of body and a specified content type.
+// CreateApprovedUserWithBody Approve a user
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 func (c *Client) CreateApprovedUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateApprovedUserRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -185,8 +238,11 @@ func (c *Client) CreateApprovedUserWithBody(ctx context.Context, contentType str
 	return c.Client.Do(req)
 }
 
-// CreateApprovedUser performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request.
+// CreateApprovedUser Approve a user
+//
 // Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 func (c *Client) CreateApprovedUser(ctx context.Context, body CreateApprovedUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateApprovedUserRequest(c.Server, body)
 	if err != nil {
@@ -199,8 +255,11 @@ func (c *Client) CreateApprovedUser(ctx context.Context, body CreateApprovedUser
 	return c.Client.Do(req)
 }
 
-// BulkCreateApprovedUsersWithBody performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request,
-// with any type of body and a specified content type.
+// BulkCreateApprovedUsersWithBody Approve users in bulk
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 func (c *Client) BulkCreateApprovedUsersWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBulkCreateApprovedUsersRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -213,8 +272,11 @@ func (c *Client) BulkCreateApprovedUsersWithBody(ctx context.Context, contentTyp
 	return c.Client.Do(req)
 }
 
-// BulkCreateApprovedUsers performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request.
+// BulkCreateApprovedUsers Approve users in bulk
+//
 // Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 func (c *Client) BulkCreateApprovedUsers(ctx context.Context, body BulkCreateApprovedUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewBulkCreateApprovedUsersRequest(c.Server, body)
 	if err != nil {
@@ -227,7 +289,9 @@ func (c *Client) BulkCreateApprovedUsers(ctx context.Context, body BulkCreateApp
 	return c.Client.Do(req)
 }
 
-// DeleteApprovedUser performs a DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId) request.
+// DeleteApprovedUser Remove an approved user
+//
+// Corresponds with DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId).
 func (c *Client) DeleteApprovedUser(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteApprovedUserRequest(c.Server, id)
 	if err != nil {
@@ -240,8 +304,11 @@ func (c *Client) DeleteApprovedUser(ctx context.Context, id openapi_types.UUID, 
 	return c.Client.Do(req)
 }
 
-// LoginUserWithBody performs a POST /auth/login (the `LoginUser` operationId) request,
-// with any type of body and a specified content type.
+// LoginUserWithBody Log in and obtain an access token
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/login (the `LoginUser` operationId).
 func (c *Client) LoginUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLoginUserRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -254,8 +321,11 @@ func (c *Client) LoginUserWithBody(ctx context.Context, contentType string, body
 	return c.Client.Do(req)
 }
 
-// LoginUser performs a POST /auth/login (the `LoginUser` operationId) request.
+// LoginUser Log in and obtain an access token
+//
 // Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/login (the `LoginUser` operationId).
 func (c *Client) LoginUser(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewLoginUserRequest(c.Server, body)
 	if err != nil {
@@ -268,8 +338,11 @@ func (c *Client) LoginUser(ctx context.Context, body LoginUserJSONRequestBody, r
 	return c.Client.Do(req)
 }
 
-// RegisterUserWithBody performs a POST /auth/register (the `RegisterUser` operationId) request,
-// with any type of body and a specified content type.
+// RegisterUserWithBody Register a new user
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 func (c *Client) RegisterUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRegisterUserRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -282,8 +355,11 @@ func (c *Client) RegisterUserWithBody(ctx context.Context, contentType string, b
 	return c.Client.Do(req)
 }
 
-// RegisterUser performs a POST /auth/register (the `RegisterUser` operationId) request.
+// RegisterUser Register a new user
+//
 // Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 func (c *Client) RegisterUser(ctx context.Context, body RegisterUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRegisterUserRequest(c.Server, body)
 	if err != nil {
@@ -296,7 +372,9 @@ func (c *Client) RegisterUser(ctx context.Context, body RegisterUserJSONRequestB
 	return c.Client.Do(req)
 }
 
-// GetCurrentUser performs a GET /me (the `GetCurrentUser` operationId) request.
+// GetCurrentUser Get the current user
+//
+// Corresponds with GET /me (the `GetCurrentUser` operationId).
 func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetCurrentUserRequest(c.Server)
 	if err != nil {
@@ -309,7 +387,9 @@ func (c *Client) GetCurrentUser(ctx context.Context, reqEditors ...RequestEditor
 	return c.Client.Do(req)
 }
 
-// ListTodos performs a GET /todos (the `ListTodos` operationId) request.
+// ListTodos List todos
+//
+// Corresponds with GET /todos (the `ListTodos` operationId).
 func (c *Client) ListTodos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListTodosRequest(c.Server)
 	if err != nil {
@@ -322,8 +402,11 @@ func (c *Client) ListTodos(ctx context.Context, reqEditors ...RequestEditorFn) (
 	return c.Client.Do(req)
 }
 
-// CreateTodoWithBody performs a POST /todos (the `CreateTodo` operationId) request,
-// with any type of body and a specified content type.
+// CreateTodoWithBody Create a todo
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with POST /todos (the `CreateTodo` operationId).
 func (c *Client) CreateTodoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateTodoRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -336,8 +419,11 @@ func (c *Client) CreateTodoWithBody(ctx context.Context, contentType string, bod
 	return c.Client.Do(req)
 }
 
-// CreateTodo performs a POST /todos (the `CreateTodo` operationId) request.
+// CreateTodo Create a todo
+//
 // Takes a body of the `application/json` content type.
+//
+// Corresponds with POST /todos (the `CreateTodo` operationId).
 func (c *Client) CreateTodo(ctx context.Context, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateTodoRequest(c.Server, body)
 	if err != nil {
@@ -350,7 +436,9 @@ func (c *Client) CreateTodo(ctx context.Context, body CreateTodoJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-// DeleteTodo performs a DELETE /todos/{id} (the `DeleteTodo` operationId) request.
+// DeleteTodo Delete a todo
+//
+// Corresponds with DELETE /todos/{id} (the `DeleteTodo` operationId).
 func (c *Client) DeleteTodo(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewDeleteTodoRequest(c.Server, id)
 	if err != nil {
@@ -363,7 +451,9 @@ func (c *Client) DeleteTodo(ctx context.Context, id openapi_types.UUID, reqEdito
 	return c.Client.Do(req)
 }
 
-// GetTodo performs a GET /todos/{id} (the `GetTodo` operationId) request.
+// GetTodo Get a todo
+//
+// Corresponds with GET /todos/{id} (the `GetTodo` operationId).
 func (c *Client) GetTodo(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetTodoRequest(c.Server, id)
 	if err != nil {
@@ -376,8 +466,11 @@ func (c *Client) GetTodo(ctx context.Context, id openapi_types.UUID, reqEditors 
 	return c.Client.Do(req)
 }
 
-// UpdateTodoWithBody performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request,
-// with any type of body and a specified content type.
+// UpdateTodoWithBody Update a todo
+//
+// Takes any type of body and a specified content type.
+//
+// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 func (c *Client) UpdateTodoWithBody(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTodoRequestWithBody(c.Server, id, contentType, body)
 	if err != nil {
@@ -390,8 +483,11 @@ func (c *Client) UpdateTodoWithBody(ctx context.Context, id openapi_types.UUID, 
 	return c.Client.Do(req)
 }
 
-// UpdateTodo performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request.
+// UpdateTodo Update a todo
+//
 // Takes a body of the `application/json` content type.
+//
+// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 func (c *Client) UpdateTodo(ctx context.Context, id openapi_types.UUID, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateTodoRequest(c.Server, id, body)
 	if err != nil {
@@ -878,94 +974,130 @@ func WithBaseURL(baseURL string) ClientOption {
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
 
-	// ListApprovedUsersWithResponse performs a GET /admin/approved-users (the `ListApprovedUsers` operationId) request.
+	// ListApprovedUsersWithResponse List approved users
 	//
 	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /admin/approved-users (the `ListApprovedUsers` operationId).
 	ListApprovedUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListApprovedUsersResponse, error)
 
-	// CreateApprovedUserWithBodyWithResponse performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request,
-	// with any type of body and a specified content type.
+	// CreateApprovedUserWithBodyWithResponse Approve a user
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 	CreateApprovedUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateApprovedUserResponse, error)
 
-	// CreateApprovedUserWithResponse performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request.
+	// CreateApprovedUserWithResponse Approve a user
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 	CreateApprovedUserWithResponse(ctx context.Context, body CreateApprovedUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateApprovedUserResponse, error)
 
-	// BulkCreateApprovedUsersWithBodyWithResponse performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request,
-	// with any type of body and a specified content type.
+	// BulkCreateApprovedUsersWithBodyWithResponse Approve users in bulk
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 	BulkCreateApprovedUsersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkCreateApprovedUsersResponse, error)
 
-	// BulkCreateApprovedUsersWithResponse performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request.
+	// BulkCreateApprovedUsersWithResponse Approve users in bulk
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 	BulkCreateApprovedUsersWithResponse(ctx context.Context, body BulkCreateApprovedUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*BulkCreateApprovedUsersResponse, error)
 
-	// DeleteApprovedUserWithResponse performs a DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId) request.
+	// DeleteApprovedUserWithResponse Remove an approved user
 	//
 	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId).
 	DeleteApprovedUserWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteApprovedUserResponse, error)
 
-	// LoginUserWithBodyWithResponse performs a POST /auth/login (the `LoginUser` operationId) request,
-	// with any type of body and a specified content type.
+	// LoginUserWithBodyWithResponse Log in and obtain an access token
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/login (the `LoginUser` operationId).
 	LoginUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginUserResponse, error)
 
-	// LoginUserWithResponse performs a POST /auth/login (the `LoginUser` operationId) request.
+	// LoginUserWithResponse Log in and obtain an access token
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/login (the `LoginUser` operationId).
 	LoginUserWithResponse(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginUserResponse, error)
 
-	// RegisterUserWithBodyWithResponse performs a POST /auth/register (the `RegisterUser` operationId) request,
-	// with any type of body and a specified content type.
+	// RegisterUserWithBodyWithResponse Register a new user
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 	RegisterUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RegisterUserResponse, error)
 
-	// RegisterUserWithResponse performs a POST /auth/register (the `RegisterUser` operationId) request.
+	// RegisterUserWithResponse Register a new user
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 	RegisterUserWithResponse(ctx context.Context, body RegisterUserJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterUserResponse, error)
 
-	// GetCurrentUserWithResponse performs a GET /me (the `GetCurrentUser` operationId) request.
+	// GetCurrentUserWithResponse Get the current user
 	//
 	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /me (the `GetCurrentUser` operationId).
 	GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error)
 
-	// ListTodosWithResponse performs a GET /todos (the `ListTodos` operationId) request.
+	// ListTodosWithResponse List todos
 	//
 	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /todos (the `ListTodos` operationId).
 	ListTodosWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTodosResponse, error)
 
-	// CreateTodoWithBodyWithResponse performs a POST /todos (the `CreateTodo` operationId) request,
-	// with any type of body and a specified content type.
+	// CreateTodoWithBodyWithResponse Create a todo
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /todos (the `CreateTodo` operationId).
 	CreateTodoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
-	// CreateTodoWithResponse performs a POST /todos (the `CreateTodo` operationId) request.
+	// CreateTodoWithResponse Create a todo
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with POST /todos (the `CreateTodo` operationId).
 	CreateTodoWithResponse(ctx context.Context, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error)
 
-	// DeleteTodoWithResponse performs a DELETE /todos/{id} (the `DeleteTodo` operationId) request.
+	// DeleteTodoWithResponse Delete a todo
 	//
 	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with DELETE /todos/{id} (the `DeleteTodo` operationId).
 	DeleteTodoWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTodoResponse, error)
 
-	// GetTodoWithResponse performs a GET /todos/{id} (the `GetTodo` operationId) request.
+	// GetTodoWithResponse Get a todo
 	//
 	// Returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with GET /todos/{id} (the `GetTodo` operationId).
 	GetTodoWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTodoResponse, error)
 
-	// UpdateTodoWithBodyWithResponse performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request,
-	// with any type of body and a specified content type.
+	// UpdateTodoWithBodyWithResponse Update a todo
 	//
-	// Returns a wrapper object for the known response body format(s).
+	// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 	UpdateTodoWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 
-	// UpdateTodoWithResponse performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request.
+	// UpdateTodoWithResponse Update a todo
+	//
 	// Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+	//
+	// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 	UpdateTodoWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error)
 }
 
@@ -1741,9 +1873,11 @@ func (r UpdateTodoResponse) ContentType() string {
 	return ""
 }
 
-// ListApprovedUsersWithResponse performs a GET /admin/approved-users (the `ListApprovedUsers` operationId) request.
+// ListApprovedUsersWithResponse List approved users
 //
 // Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /admin/approved-users (the `ListApprovedUsers` operationId).
 func (c *ClientWithResponses) ListApprovedUsersWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListApprovedUsersResponse, error) {
 	rsp, err := c.ListApprovedUsers(ctx, reqEditors...)
 	if err != nil {
@@ -1752,10 +1886,11 @@ func (c *ClientWithResponses) ListApprovedUsersWithResponse(ctx context.Context,
 	return ParseListApprovedUsersResponse(rsp)
 }
 
-// CreateApprovedUserWithBodyWithResponse performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request,
-// with any type of body and a specified content type.
+// CreateApprovedUserWithBodyWithResponse Approve a user
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 func (c *ClientWithResponses) CreateApprovedUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateApprovedUserResponse, error) {
 	rsp, err := c.CreateApprovedUserWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
@@ -1764,8 +1899,11 @@ func (c *ClientWithResponses) CreateApprovedUserWithBodyWithResponse(ctx context
 	return ParseCreateApprovedUserResponse(rsp)
 }
 
-// CreateApprovedUserWithResponse performs a POST /admin/approved-users (the `CreateApprovedUser` operationId) request.
+// CreateApprovedUserWithResponse Approve a user
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/approved-users (the `CreateApprovedUser` operationId).
 func (c *ClientWithResponses) CreateApprovedUserWithResponse(ctx context.Context, body CreateApprovedUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateApprovedUserResponse, error) {
 	rsp, err := c.CreateApprovedUser(ctx, body, reqEditors...)
 	if err != nil {
@@ -1774,10 +1912,11 @@ func (c *ClientWithResponses) CreateApprovedUserWithResponse(ctx context.Context
 	return ParseCreateApprovedUserResponse(rsp)
 }
 
-// BulkCreateApprovedUsersWithBodyWithResponse performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request,
-// with any type of body and a specified content type.
+// BulkCreateApprovedUsersWithBodyWithResponse Approve users in bulk
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 func (c *ClientWithResponses) BulkCreateApprovedUsersWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*BulkCreateApprovedUsersResponse, error) {
 	rsp, err := c.BulkCreateApprovedUsersWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
@@ -1786,8 +1925,11 @@ func (c *ClientWithResponses) BulkCreateApprovedUsersWithBodyWithResponse(ctx co
 	return ParseBulkCreateApprovedUsersResponse(rsp)
 }
 
-// BulkCreateApprovedUsersWithResponse performs a POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId) request.
+// BulkCreateApprovedUsersWithResponse Approve users in bulk
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /admin/approved-users/bulk (the `BulkCreateApprovedUsers` operationId).
 func (c *ClientWithResponses) BulkCreateApprovedUsersWithResponse(ctx context.Context, body BulkCreateApprovedUsersJSONRequestBody, reqEditors ...RequestEditorFn) (*BulkCreateApprovedUsersResponse, error) {
 	rsp, err := c.BulkCreateApprovedUsers(ctx, body, reqEditors...)
 	if err != nil {
@@ -1796,9 +1938,11 @@ func (c *ClientWithResponses) BulkCreateApprovedUsersWithResponse(ctx context.Co
 	return ParseBulkCreateApprovedUsersResponse(rsp)
 }
 
-// DeleteApprovedUserWithResponse performs a DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId) request.
+// DeleteApprovedUserWithResponse Remove an approved user
 //
 // Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /admin/approved-users/{id} (the `DeleteApprovedUser` operationId).
 func (c *ClientWithResponses) DeleteApprovedUserWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteApprovedUserResponse, error) {
 	rsp, err := c.DeleteApprovedUser(ctx, id, reqEditors...)
 	if err != nil {
@@ -1807,10 +1951,11 @@ func (c *ClientWithResponses) DeleteApprovedUserWithResponse(ctx context.Context
 	return ParseDeleteApprovedUserResponse(rsp)
 }
 
-// LoginUserWithBodyWithResponse performs a POST /auth/login (the `LoginUser` operationId) request,
-// with any type of body and a specified content type.
+// LoginUserWithBodyWithResponse Log in and obtain an access token
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/login (the `LoginUser` operationId).
 func (c *ClientWithResponses) LoginUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginUserResponse, error) {
 	rsp, err := c.LoginUserWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
@@ -1819,8 +1964,11 @@ func (c *ClientWithResponses) LoginUserWithBodyWithResponse(ctx context.Context,
 	return ParseLoginUserResponse(rsp)
 }
 
-// LoginUserWithResponse performs a POST /auth/login (the `LoginUser` operationId) request.
+// LoginUserWithResponse Log in and obtain an access token
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/login (the `LoginUser` operationId).
 func (c *ClientWithResponses) LoginUserWithResponse(ctx context.Context, body LoginUserJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginUserResponse, error) {
 	rsp, err := c.LoginUser(ctx, body, reqEditors...)
 	if err != nil {
@@ -1829,10 +1977,11 @@ func (c *ClientWithResponses) LoginUserWithResponse(ctx context.Context, body Lo
 	return ParseLoginUserResponse(rsp)
 }
 
-// RegisterUserWithBodyWithResponse performs a POST /auth/register (the `RegisterUser` operationId) request,
-// with any type of body and a specified content type.
+// RegisterUserWithBodyWithResponse Register a new user
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 func (c *ClientWithResponses) RegisterUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RegisterUserResponse, error) {
 	rsp, err := c.RegisterUserWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
@@ -1841,8 +1990,11 @@ func (c *ClientWithResponses) RegisterUserWithBodyWithResponse(ctx context.Conte
 	return ParseRegisterUserResponse(rsp)
 }
 
-// RegisterUserWithResponse performs a POST /auth/register (the `RegisterUser` operationId) request.
+// RegisterUserWithResponse Register a new user
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /auth/register (the `RegisterUser` operationId).
 func (c *ClientWithResponses) RegisterUserWithResponse(ctx context.Context, body RegisterUserJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterUserResponse, error) {
 	rsp, err := c.RegisterUser(ctx, body, reqEditors...)
 	if err != nil {
@@ -1851,9 +2003,11 @@ func (c *ClientWithResponses) RegisterUserWithResponse(ctx context.Context, body
 	return ParseRegisterUserResponse(rsp)
 }
 
-// GetCurrentUserWithResponse performs a GET /me (the `GetCurrentUser` operationId) request.
+// GetCurrentUserWithResponse Get the current user
 //
 // Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /me (the `GetCurrentUser` operationId).
 func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GetCurrentUserResponse, error) {
 	rsp, err := c.GetCurrentUser(ctx, reqEditors...)
 	if err != nil {
@@ -1862,9 +2016,11 @@ func (c *ClientWithResponses) GetCurrentUserWithResponse(ctx context.Context, re
 	return ParseGetCurrentUserResponse(rsp)
 }
 
-// ListTodosWithResponse performs a GET /todos (the `ListTodos` operationId) request.
+// ListTodosWithResponse List todos
 //
 // Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /todos (the `ListTodos` operationId).
 func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTodosResponse, error) {
 	rsp, err := c.ListTodos(ctx, reqEditors...)
 	if err != nil {
@@ -1873,10 +2029,11 @@ func (c *ClientWithResponses) ListTodosWithResponse(ctx context.Context, reqEdit
 	return ParseListTodosResponse(rsp)
 }
 
-// CreateTodoWithBodyWithResponse performs a POST /todos (the `CreateTodo` operationId) request,
-// with any type of body and a specified content type.
+// CreateTodoWithBodyWithResponse Create a todo
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /todos (the `CreateTodo` operationId).
 func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
 	rsp, err := c.CreateTodoWithBody(ctx, contentType, body, reqEditors...)
 	if err != nil {
@@ -1885,8 +2042,11 @@ func (c *ClientWithResponses) CreateTodoWithBodyWithResponse(ctx context.Context
 	return ParseCreateTodoResponse(rsp)
 }
 
-// CreateTodoWithResponse performs a POST /todos (the `CreateTodo` operationId) request.
+// CreateTodoWithResponse Create a todo
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with POST /todos (the `CreateTodo` operationId).
 func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, body CreateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTodoResponse, error) {
 	rsp, err := c.CreateTodo(ctx, body, reqEditors...)
 	if err != nil {
@@ -1895,9 +2055,11 @@ func (c *ClientWithResponses) CreateTodoWithResponse(ctx context.Context, body C
 	return ParseCreateTodoResponse(rsp)
 }
 
-// DeleteTodoWithResponse performs a DELETE /todos/{id} (the `DeleteTodo` operationId) request.
+// DeleteTodoWithResponse Delete a todo
 //
 // Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with DELETE /todos/{id} (the `DeleteTodo` operationId).
 func (c *ClientWithResponses) DeleteTodoWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*DeleteTodoResponse, error) {
 	rsp, err := c.DeleteTodo(ctx, id, reqEditors...)
 	if err != nil {
@@ -1906,9 +2068,11 @@ func (c *ClientWithResponses) DeleteTodoWithResponse(ctx context.Context, id ope
 	return ParseDeleteTodoResponse(rsp)
 }
 
-// GetTodoWithResponse performs a GET /todos/{id} (the `GetTodo` operationId) request.
+// GetTodoWithResponse Get a todo
 //
 // Returns a wrapper object for the known response body format(s).
+//
+// Corresponds with GET /todos/{id} (the `GetTodo` operationId).
 func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, id openapi_types.UUID, reqEditors ...RequestEditorFn) (*GetTodoResponse, error) {
 	rsp, err := c.GetTodo(ctx, id, reqEditors...)
 	if err != nil {
@@ -1917,10 +2081,11 @@ func (c *ClientWithResponses) GetTodoWithResponse(ctx context.Context, id openap
 	return ParseGetTodoResponse(rsp)
 }
 
-// UpdateTodoWithBodyWithResponse performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request,
-// with any type of body and a specified content type.
+// UpdateTodoWithBodyWithResponse Update a todo
 //
-// Returns a wrapper object for the known response body format(s).
+// Takes any type of body and a specified content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context, id openapi_types.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
 	rsp, err := c.UpdateTodoWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
@@ -1929,8 +2094,11 @@ func (c *ClientWithResponses) UpdateTodoWithBodyWithResponse(ctx context.Context
 	return ParseUpdateTodoResponse(rsp)
 }
 
-// UpdateTodoWithResponse performs a PATCH /todos/{id} (the `UpdateTodo` operationId) request.
+// UpdateTodoWithResponse Update a todo
+//
 // Takes a body of the `application/json` content type, and returns a wrapper object for the known response body format(s).
+//
+// Corresponds with PATCH /todos/{id} (the `UpdateTodo` operationId).
 func (c *ClientWithResponses) UpdateTodoWithResponse(ctx context.Context, id openapi_types.UUID, body UpdateTodoJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateTodoResponse, error) {
 	rsp, err := c.UpdateTodo(ctx, id, body, reqEditors...)
 	if err != nil {
